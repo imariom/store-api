@@ -81,7 +81,7 @@ func (h *Product) Delete(rw http.ResponseWriter, r *http.Request) {
 }
 
 // Get search and retrieve a product given by ID.
-func (h *Product) Get(rw http.ResponseWriter, r *http.Request) {``
+func (h *Product) Get(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a GET request")
 }
 
