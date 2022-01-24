@@ -9,4 +9,9 @@ type User struct {
 type Users []*User
 
 // Users of our api
-var users = Users{}
+var users = Users{
+	&User{
+		Email: "admin@api.com",
+		Password: "admin123",
+	},
+}
