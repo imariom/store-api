@@ -14,16 +14,12 @@ func main() {
 	logger := log.New(os.Stdout, "[PRODUCT API]", log.LstdFlags)
 
 	// api handlers
-	userHandler := handlers.NewUser(logger)
 	productHandler := handlers.NewProduct(logger)
 
 	// multiplexer
 	mux := http.NewServeMux()
-	mux.Handle("/api/users/", userHandler)
-	mux.Handle("/api/users", userHandler)
-
-	mux.Handle("/api/products/", productHandler)
-	mux.Handle("/api/products", productHandler)
+	mux.Handle("/products/", productHandler)
+	mux.Handle("/products", productHandler)
 
 	// create and run server
 	server.Run(&server.Options{
