@@ -16,6 +16,8 @@ var (
 	updateProductRe         = regexp.MustCompile(`^/products/(\d+)$`)
 	productCategoriesRe     = regexp.MustCompile(`^/products/categories[/]*$`)
 	getProductsByCategoryRe = regexp.MustCompile(`^/products/categories/(\w+)$`)
+	getProductRe            = regexp.MustCompile(`^/products/(\d+)$`)
+	deleteProductRe         = regexp.MustCompile(`^/products/(\d+)$`)
 )
 
 var (
@@ -35,13 +37,10 @@ func NewProduct(l *log.Logger) *Product {
 
 func getProduct(regex regexp.Regexp, r *http.Request) (*data.Product, error) {
 	// try get the id of the product
-	matches := regex.FindStringSubmatch(r.URL.Path)
-	if len(matches) < 2 {
+	id, err := getProductId(regex, r.URL.Path)
+	if err != nil {
 		return nil, ProductNotFound
 	}
-
-	// convert product id to integer
-	id, _ := strconv.Atoi(matches[1])
 
 	// decode the product from the request body
 	product := &data.Product{}
@@ -51,6 +50,19 @@ func getProduct(regex regexp.Regexp, r *http.Request) (*data.Product, error) {
 	product.ID = uint64(id)
 
 	return product, nil
+}
+
+func getProductId(regex regexp.Regexp, exp string) (int, error) {
+	// parse id from expression
+	matches := regex.FindStringSubmatch(exp)
+	if len(matches) < 2 {
+		return -1, fmt.Errorf("id not found")
+	}
+
+	// convert id to integer
+	id, _ := strconv.Atoi(matches[1])
+
+	return id, nil
 }
 
 func (h *Product) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
@@ -79,7 +91,15 @@ func (h *Product) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		return
 
 	case r.Method == http.MethodGet && getProductsByCategoryRe.MatchString(r.URL.Path):
-		h.GetProductInCategory(rw, r)
+		h.GetInCategory(rw, r)
+		return
+
+	case r.Method == http.MethodGet && getProductRe.MatchString(r.URL.Path):
+		h.Get(rw, r)
+		return
+
+	case r.Method == http.MethodDelete && deleteProductRe.MatchString(r.URL.Path):
+		h.Delete(rw, r)
 		return
 
 	default:
@@ -181,7 +201,7 @@ func (h *Product) GetCategories(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Product) GetProductInCategory(rw http.ResponseWriter, r *http.Request) {
+func (h *Product) GetInCategory(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a GET products in category request")
 
 	// get product category
@@ -207,5 +227,51 @@ func (h *Product) GetProductInCategory(rw http.ResponseWriter, r *http.Request) 
 
 // Limit results
 // Sort Results
-// Get a Single Product
-// Delete product
+func (h *Product) Get(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("received a GET request")
+
+	// get product id
+	productID, err := getProductId(*getProductRe, r.URL.Path)
+	if err != nil {
+		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
+		return
+	}
+
+	// get the product
+	product, err := data.GetProduct(productID)
+	if err != nil {
+		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
+		return
+	}
+
+	// try to return the product
+	if err := product.ToJSON(rw); err != nil {
+		http.Error(rw, InternalServerError.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (h *Product) Delete(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("received a DELETE request")
+
+	// get product id
+	productID, err := getProductId(*deleteProductRe, r.URL.Path)
+	if err != nil {
+		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
+		return
+	}
+
+	// delete product from datastore
+	product, err := data.RemoveProduct(productID)
+	if err != nil {
+		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
+		return
+	}
+
+	// return deleted product
+	if err := product.ToJSON(rw); err != nil {
+		http.Error(rw,
+			fmt.Sprintf("product with ID: '%d' was deleted, but failed to retrieve it",
+				product.ID),
+			http.StatusInternalServerError)
+	}
+}

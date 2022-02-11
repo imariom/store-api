@@ -2,16 +2,20 @@
 
 GET http://localhost:8080/products HTTP/1.1
 
+### Get a single product
+
+GET http://localhost:8080/products/2 HTTP/1.1
+
 ### Add new product
 POST http://localhost:8080/products HTTP/1.1
 content-type: application/json
 
 { 
-    "name": "Web Master Hat",
-    "description": "Web Hat",
-    "category": "hats",
+    "name": "The Go Programming Language",
+    "description": "Modern, fast, reliable and productive",
+    "category": "books",
     "image": "",
-    "price": 12.45
+    "price": 49.99
 }
 
 ### Update a single product
@@ -20,11 +24,11 @@ PUT http://localhost:8080/products/0 HTTP/1.1
 content-type: application/json
 
 { 
-    "name": "Python Cheatsheet",
-    "description": "The complete Python cheatsheet",
-    "category": "cheatsheets",
-    "image": "https://edondza.co.mz/store/material/cheatsheets/python/the_complete_python.jpg",
-    "price": 3.99
+    "name": "The C++ Programming Language",
+    "description": "Modern C++",
+    "category": "books",
+    "image": "",
+    "price": 49.99
 }
 
 ### Update attributes of a specific product
@@ -32,8 +36,7 @@ content-type: application/json
 PATCH http://localhost:8080/products/0 HTTP/1.1
 content-type: application/json
 
-{ 
-    
+{  
     "price": 21.38
 }
 
@@ -44,3 +47,7 @@ GET http://localhost:8080/products/categories HTTP/1.1
 ### Get all products in a specific category
 
 GET http://localhost:8080/products/categories/hats HTTP/1.1
+
+### Delete a product
+
+DELETE http://localhost:8080/products/0 HTTP/1.1

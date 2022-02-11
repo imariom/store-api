@@ -102,11 +102,28 @@ func SetProduct(prod *Product) error {
 
 func getNextID() uint64 {
 	rwMtx.RLock()
+	defer rwMtx.RUnlock()
+
+	if len(productList) == 0 {
+		return 0
+	}
+
 	// assumes the product with ID 0 will never be deleted
 	lastProduct := productList[len(productList)-1]
-	rwMtx.RUnlock()
 
 	return lastProduct.ID + 1
+}
+
+func productExists(id uint64) (int, bool) {
+	rwMtx.RLock()
+	for i, p := range productList {
+		if p.ID == id {
+			return i, true
+		}
+	}
+	rwMtx.RUnlock()
+
+	return -1, false
 }
 
 func (ps *Products) ToJSON(w io.Writer) error {
@@ -144,6 +161,51 @@ func GetProductsByCategory(category string) Products {
 	rwMtx.RUnlock()
 
 	return products
+}
+
+func GetProduct(id int) (*Product, error) {
+	product := &Product{}
+
+	// TODO: optimize productList to another data structure
+	// for fast reading and writing
+	rwMtx.RLock()
+	defer rwMtx.RUnlock()
+	for _, p := range productList {
+		if p.ID == uint64(id) {
+			*product = *p // to avoid reading concurrently accessed product
+			return product, nil
+		}
+	}
+
+	return nil, fmt.Errorf("product not found")
+}
+
+func RemoveProduct(id int) (*Product, error) {
+	// checks wheter product exists
+	index, exists := productExists(uint64(id))
+	if !exists {
+		return nil, fmt.Errorf("product does not exist")
+	}
+
+	deletedProduct := &Product{}
+
+	// remove product from datastore
+	rwMtx.RLock()
+	*deletedProduct = *productList[index]
+	tmpList := make(Products, 0, len(productList)-1)
+
+	for i, p := range productList {
+		if i == index {
+			continue
+		}
+
+		tmpList = append(tmpList, p)
+	}
+	productList = tmpList
+
+	rwMtx.RUnlock()
+
+	return deletedProduct, nil
 }
 
 func (p *Product) FromJSON(r io.Reader) error {

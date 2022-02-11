@@ -55,7 +55,7 @@ func Run(opts *Options) {
 
 	// waitisten for gracefull shutdown signals
 	sig := <-sigChan
-	opts.Logger.Println("received greatful shutdown - shuting down server:", sig)
+	opts.Logger.Println("received graceful shutdown - shuting down server:", sig)
 
 	// forcefully shutdown server after 30 seconds if there are pending jobs
 	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
