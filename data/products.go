@@ -113,6 +113,22 @@ func (ps *Products) ToJSON(w io.Writer) error {
 	return json.NewEncoder(w).Encode(ps)
 }
 
+func (ps *Products) CategoriesToJSON(w io.Writer) error {
+	// get all categories <category, COUNT>
+	tmpCategories := make(map[string]uint64, 0)
+	for _, p := range productList {
+		tmpCategories[p.Category] = tmpCategories[p.Category] + 1
+	}
+
+	// get only category name
+	categories := make([]string, 0)
+	for category, _ := range tmpCategories {
+		categories = append(categories, category)
+	}
+
+	return json.NewEncoder(w).Encode(categories)
+}
+
 func (p *Product) FromJSON(r io.Reader) error {
 	return json.NewDecoder(r).Decode(p)
 }

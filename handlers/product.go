@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	listProductsRe  = regexp.MustCompile(`^/products[/]?$`)
-	createProductRe = regexp.MustCompile(`^/products[/]?$`)
-	updateProductRe = regexp.MustCompile(`^/products/(\d+)$`)
+	listProductsRe      = regexp.MustCompile(`^/products[/]*$`)
+	createProductRe     = regexp.MustCompile(`^/products[/]*$`)
+	updateProductRe     = regexp.MustCompile(`^/products/(\d+)$`)
+	productCategoriesRe = regexp.MustCompile(`^/products/categories[/]*$`)
 )
 
 var (
@@ -30,7 +31,6 @@ type Product struct {
 func NewProduct(l *log.Logger) *Product {
 	return &Product{l}
 }
-
 
 func getProduct(regex regexp.Regexp, r *http.Request) (*data.Product, error) {
 	// try get the id of the product
@@ -71,6 +71,10 @@ func (h *Product) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	case r.Method == http.MethodPatch && updateProductRe.MatchString(r.URL.Path):
 		h.Set(rw, r)
+		return
+
+	case r.Method == http.MethodGet && productCategoriesRe.MatchString(r.URL.Path):
+		h.GetCategories(rw, r)
 		return
 
 	default:
@@ -160,6 +164,15 @@ func (h *Product) Set(rw http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("product with ID: '%d' was updated, but failed to retrieve it",
 				product.ID),
 			http.StatusInternalServerError)
+	}
+}
+
+func (h *Product) GetCategories(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("recieved a GET-categories request")
+
+	products := data.GetAllProducts()
+	if err := products.CategoriesToJSON(rw); err != nil {
+		http.Error(rw, InternalServerError.Error(), http.StatusInternalServerError)
 	}
 }
 

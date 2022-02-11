@@ -9,13 +9,13 @@ content-type: application/json
 #     "price": 27.63
 # }
 
-{ 
-    "name": "The C++ Programming Language",
-    "description": "Modern C++ proramming",
-    "category": "books",
-    "image": "https://bstroustrup.com/books/the_cpp_programming_language.jpg",
-    "price": 49.99
-}
+# { 
+#     "name": "The C++ Programming Language",
+#     "description": "Modern C++ proramming",
+#     "category": "books",
+#     "image": "https://bstroustrup.com/books/the_cpp_programming_language.jpg",
+#     "price": 49.99
+# }
 
 # { 
 #     "name": "Edondza Hat",
@@ -25,13 +25,13 @@ content-type: application/json
 #     "price": 8.36
 # }
 
-# { 
-#     "name": "Python Cheatsheet",
-#     "description": "The complete Python cheatsheet",
-#     "category": "cheatsheets",
-#     "image": "https://edondza.co.mz/store/material/cheatsheets/python/the_complete_python.jpg",
-#     "price": 3.99
-# }
+{ 
+    "name": "Python Cheatsheet",
+    "description": "The complete Python cheatsheet",
+    "category": "cheatsheets",
+    "image": "https://edondza.co.mz/store/material/cheatsheets/python/the_complete_python.jpg",
+    "price": 3.99
+}
 
 ###
 
@@ -59,3 +59,7 @@ content-type: application/json
     
     "price": 21.38
 }
+
+###
+
+GET http://localhost:8080/products/categories HTTP/1.1
