@@ -1,43 +1,20 @@
-POST http://localhost:8080/products HTTP/1.1
-content-type: application/json
-
-# { 
-#     "name": "Edondza T-Shirt",
-#     "description": "Web master t-shirt from edondza",
-#     "category": "t-shirts",
-#     "image": "https://edondza.co.mz/store/images/t-shirts/web_master.jpg",
-#     "price": 27.63
-# }
-
-# { 
-#     "name": "The C++ Programming Language",
-#     "description": "Modern C++ proramming",
-#     "category": "books",
-#     "image": "https://bstroustrup.com/books/the_cpp_programming_language.jpg",
-#     "price": 49.99
-# }
-
-# { 
-#     "name": "Edondza Hat",
-#     "description": "Employee Hat",
-#     "category": "hats",
-#     "image": "https://edondza.co.mz/store/images/hast/employees.jpg",
-#     "price": 8.36
-# }
-
-{ 
-    "name": "Python Cheatsheet",
-    "description": "The complete Python cheatsheet",
-    "category": "cheatsheets",
-    "image": "https://edondza.co.mz/store/material/cheatsheets/python/the_complete_python.jpg",
-    "price": 3.99
-}
-
-###
+### List all products
 
 GET http://localhost:8080/products HTTP/1.1
 
-###
+### Add new product
+POST http://localhost:8080/products HTTP/1.1
+content-type: application/json
+
+{ 
+    "name": "Web Master Hat",
+    "description": "Web Hat",
+    "category": "hats",
+    "image": "",
+    "price": 12.45
+}
+
+### Update a single product
 
 PUT http://localhost:8080/products/0 HTTP/1.1
 content-type: application/json
@@ -50,7 +27,7 @@ content-type: application/json
     "price": 3.99
 }
 
-###
+### Update attributes of a specific product
 
 PATCH http://localhost:8080/products/0 HTTP/1.1
 content-type: application/json
@@ -60,6 +37,10 @@ content-type: application/json
     "price": 21.38
 }
 
-###
+### Get all categories
 
 GET http://localhost:8080/products/categories HTTP/1.1
+
+### Get all products in a specific category
+
+GET http://localhost:8080/products/categories/hats HTTP/1.1

@@ -11,10 +11,11 @@ import (
 )
 
 var (
-	listProductsRe      = regexp.MustCompile(`^/products[/]*$`)
-	createProductRe     = regexp.MustCompile(`^/products[/]*$`)
-	updateProductRe     = regexp.MustCompile(`^/products/(\d+)$`)
-	productCategoriesRe = regexp.MustCompile(`^/products/categories[/]*$`)
+	listProductsRe          = regexp.MustCompile(`^/products[/]*$`)
+	createProductRe         = regexp.MustCompile(`^/products[/]*$`)
+	updateProductRe         = regexp.MustCompile(`^/products/(\d+)$`)
+	productCategoriesRe     = regexp.MustCompile(`^/products/categories[/]*$`)
+	getProductsByCategoryRe = regexp.MustCompile(`^/products/categories/(\w+)$`)
 )
 
 var (
@@ -75,6 +76,10 @@ func (h *Product) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	case r.Method == http.MethodGet && productCategoriesRe.MatchString(r.URL.Path):
 		h.GetCategories(rw, r)
+		return
+
+	case r.Method == http.MethodGet && getProductsByCategoryRe.MatchString(r.URL.Path):
+		h.GetProductInCategory(rw, r)
 		return
 
 	default:
@@ -176,8 +181,30 @@ func (h *Product) GetCategories(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Get all categories
-// Get products in a specific category
+func (h *Product) GetProductInCategory(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("received a GET products in category request")
+
+	// get product category
+	matches := getProductsByCategoryRe.FindStringSubmatch(r.URL.Path)
+	if len(matches) < 2 {
+		http.Error(rw, "category not found", http.StatusNotFound)
+		return
+	}
+	category := matches[1] // extract the category name
+
+	// try to get all products in the category
+	products := data.GetProductsByCategory(category)
+	if len(products) == 0 {
+		http.Error(rw, "category not found", http.StatusNotFound)
+		return
+	}
+
+	if err := products.ToJSON(rw); err != nil {
+		http.Error(rw, InternalServerError.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 // Limit results
 // Sort Results
 // Get a Single Product

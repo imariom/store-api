@@ -116,9 +116,12 @@ func (ps *Products) ToJSON(w io.Writer) error {
 func (ps *Products) CategoriesToJSON(w io.Writer) error {
 	// get all categories <category, COUNT>
 	tmpCategories := make(map[string]uint64, 0)
+
+	rwMtx.RLock()
 	for _, p := range productList {
 		tmpCategories[p.Category] = tmpCategories[p.Category] + 1
 	}
+	rwMtx.RUnlock()
 
 	// get only category name
 	categories := make([]string, 0)
@@ -127,6 +130,20 @@ func (ps *Products) CategoriesToJSON(w io.Writer) error {
 	}
 
 	return json.NewEncoder(w).Encode(categories)
+}
+
+func GetProductsByCategory(category string) Products {
+	products := Products{}
+
+	rwMtx.RLock()
+	for _, p := range productList {
+		if p.Category == category {
+			products = append(products, p)
+		}
+	}
+	rwMtx.RUnlock()
+
+	return products
 }
 
 func (p *Product) FromJSON(r io.Reader) error {
