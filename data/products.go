@@ -2,6 +2,7 @@ package data
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"sync"
 )
@@ -45,6 +46,58 @@ func AddNewProduct(p *Product) {
 	rwMtx.Lock()
 	productList = append(productList, p)
 	rwMtx.Unlock()
+}
+
+func UpdateProduct(prod *Product) error {
+	rwMtx.Lock()
+	defer rwMtx.Unlock()
+
+	// TODO: optimize the productList data structure for
+	// reading and writing (e.g, map data structure)
+	for i, p := range productList {
+		if p.ID == prod.ID {
+			productList[i] = prod
+			return nil
+		}
+	}
+
+	return fmt.Errorf("product does not exist")
+}
+
+func SetProduct(prod *Product) error {
+	rwMtx.Lock()
+	defer rwMtx.Unlock()
+
+	for i, p := range productList {
+		if p.ID == prod.ID {
+			if prod.Name != "" {
+				productList[i].Name = prod.Name
+			}
+
+			if prod.Description != "" {
+				productList[i].Description = prod.Description
+			}
+
+			if prod.Category != "" {
+				productList[i].Category = prod.Category
+			}
+
+			if prod.Price != 0.0 {
+				productList[i].Price = prod.Price
+			}
+
+			if prod.Image != "" {
+				productList[i].Image = prod.Image
+			}
+
+			// set temporary product equal to original product
+			*prod = *productList[i]
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("product does not exist")
 }
 
 func getNextID() uint64 {
