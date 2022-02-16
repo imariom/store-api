@@ -9,14 +9,6 @@ import (
 	"github.com/imariom/products-api/data"
 )
 
-var (
-	listUsersRe  = regexp.MustCompile(`^/users[/]?$`)
-	getUserRe    = regexp.MustCompile(`^/users/(\d+)$`)
-	crateUserRe  = regexp.MustCompile(`^/users[/]?$`)
-	putUserRe    = regexp.MustCompile(`^/users/(\d+)$`)
-	updateUserRe = regexp.MustCompile(`^/users/(\d+)$`)
-)
-
 type User struct {
 	logger *log.Logger
 }
@@ -29,17 +21,17 @@ func parseUser(regex *regexp.Regexp, r *http.Request) (*data.User, error) {
 	// try to parse user id
 	id, err := getID(*regex, r.URL.Path)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user id")
+		return nil, fmt.Errorf(data.UserIDError)
 	}
 
 	// decode the user from the request body
 	user := &data.User{}
 	if err := user.FromJSON(r.Body); err != nil {
-		return nil, fmt.Errorf("invalid user payload")
+		return nil, fmt.Errorf(data.UserPayloadError)
 	}
 
-	// avoid nil pointer reference error when none of Address struct
-	// fields is provided in the payload.
+	// This block avoid nil pointer reference error when none of
+	// Address struct fields is provided in the payload.
 	if user.Address == nil {
 		user.Address = &data.Address{}
 	}
@@ -52,78 +44,87 @@ func (h *User) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// set API to be json based (send and receive JSON data)
 	rw.Header().Set("Content-Type", "application/json")
 
-	switch {
-	case r.Method == http.MethodGet && listUsersRe.MatchString(r.URL.Path):
-		h.list(rw, r)
-		return
-
-	case r.Method == http.MethodGet && getUserRe.MatchString(r.URL.Path):
+	// route each incoming request
+	switch r.Method {
+	case http.MethodGet:
 		h.get(rw, r)
 		return
 
-	case r.Method == http.MethodPost && crateUserRe.MatchString(r.URL.Path):
+	case http.MethodPost:
 		h.create(rw, r)
 		return
 
-	case r.Method == http.MethodPut || r.Method == http.MethodPatch && updateUserRe.MatchString(r.URL.Path):
+	case http.MethodPut:
+		fallthrough
+	case http.MethodPatch:
 		h.update(rw, r)
 		return
 
 	default:
 		http.Error(rw, "HTTP verb not implemented", http.StatusNotImplemented)
-		return
-	}
-}
-
-func (h *User) list(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("[INFO] received a GET list user request")
-
-	users := data.GetAllUsers()
-	if err := users.ToJSON(rw); err != nil {
-		msg := "internal server error, while converting users to JSON"
-		h.logger.Println("[ERROR] ", msg)
-		http.Error(rw, msg, http.StatusInternalServerError)
 	}
 }
 
 func (h *User) get(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("[INFO] received a GET user request")
+	h.logger.Println("received a GET user request")
 
-	// get user id
-	userID, err := getID(*getUserRe, r.URL.Path)
-	if err != nil {
-		http.Error(rw, "user not found", http.StatusNotFound)
+	// serve list all users request
+	listUsersRe := regexp.MustCompile(`^/users[/]?$`)
+
+	if listUsersRe.MatchString(r.URL.Path) {
+		users := data.GetAllUsers()
+
+		if err := users.ToJSON(rw); err != nil {
+			h.logger.Println(data.UserConvertionError)
+			http.Error(rw, data.UserConvertionError, http.StatusInternalServerError)
+		}
+
 		return
 	}
 
-	// get user
-	user, err := data.GetUser(uint64(userID))
-	if err != nil {
-		http.Error(rw, "user not found", http.StatusNotFound)
+	// serve get user request
+	getUserRe := regexp.MustCompile(`^/users/(\d+)$`)
+	if getUserRe.MatchString(r.URL.Path) {
+		userID, err := getID(*getUserRe, r.URL.Path)
+		if err != nil {
+			http.Error(rw, data.UserNotFoundError, http.StatusNotFound)
+			return
+		}
+
+		user, err := data.GetUser(uint64(userID))
+		if err != nil {
+			http.Error(rw, data.UserNotFoundError, http.StatusNotFound)
+			return
+		}
+
+		if err := user.ToJSON(rw); err != nil {
+			http.Error(rw, data.UserConvertionError, http.StatusInternalServerError)
+		}
+
 		return
 	}
 
-	// try to return the user
-	if err := user.ToJSON(rw); err != nil {
-		http.Error(rw, InternalServerError.Error(), http.StatusInternalServerError)
-	}
+	http.Error(rw, "bad GET request", http.StatusBadRequest)
 }
 
 func (h *User) create(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a POST user request")
 
-	newUser := &data.User{}
-	if err := newUser.FromJSON(r.Body); err != nil {
-		http.Error(rw, "invalid payload", http.StatusBadRequest)
+	// parse user from request object
+	user := &data.User{}
+	if err := user.FromJSON(r.Body); err != nil {
+		http.Error(rw, data.UserPayloadError, http.StatusBadRequest)
 		return
 	}
-	data.AddNewUser(newUser)
+
+	// add user to data store
+	data.AddNewUser(user)
 
 	// try to return created user
-	if err := newUser.ToJSON(rw); err != nil {
+	if err := user.ToJSON(rw); err != nil {
 		http.Error(rw,
 			fmt.Sprintf("user created with ID: '%d', but failed to retrieve it",
-				newUser.ID),
+				user.ID),
 			http.StatusInternalServerError)
 	}
 }
@@ -132,12 +133,15 @@ func (h *User) update(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a PUT user request")
 
 	// try to parse user from request object
+	updateUserRe := regexp.MustCompile(`^/users/(\d+)$`)
+
 	user, err := parseUser(updateUserRe, r)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusNotFound)
 		return
 	}
 
+	// match request method (PUT or PATCH)
 	if r.Method == http.MethodPut {
 		// update whole user information
 		if err := data.UpdateUser(user); err != nil {

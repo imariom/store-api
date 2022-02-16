@@ -7,6 +7,13 @@ import (
 	"sync"
 )
 
+const (
+	UserNotFoundError   = "requested user does not exist"
+	UserPayloadError    = "invalid user payload"
+	UserIDError         = "invalid user ID"
+	UserConvertionError = "failed to convert user(s)"
+)
+
 // this mutex is used to control access to usersList
 // slice.
 var userRWMutex = &sync.RWMutex{}
@@ -57,7 +64,7 @@ func userExists(id uint64) (int, *User, error) {
 		}
 	}
 
-	return -1, nil, fmt.Errorf("user doe not exist")
+	return -1, nil, fmt.Errorf(UserNotFoundError)
 }
 
 func getNextUserID() uint64 {
@@ -102,7 +109,7 @@ func UpdateUser(user *User) error {
 		}
 	}
 
-	return fmt.Errorf("user does not exist")
+	return fmt.Errorf(UserNotFoundError)
 }
 
 func SetUser(user *User) error {
@@ -151,7 +158,7 @@ func SetUser(user *User) error {
 		}
 	}
 
-	return fmt.Errorf("product not found")
+	return fmt.Errorf(UserNotFoundError)
 }
 
 func AddNewUser(u *User) {
