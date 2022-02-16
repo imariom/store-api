@@ -60,6 +60,10 @@ func (h *User) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		h.update(rw, r)
 		return
 
+	case http.MethodDelete:
+		h.delete(rw, r)
+		return
+
 	default:
 		http.Error(rw, "HTTP verb not implemented", http.StatusNotImplemented)
 	}
@@ -160,6 +164,33 @@ func (h *User) update(rw http.ResponseWriter, r *http.Request) {
 	if err := user.ToJSON(rw); err != nil {
 		http.Error(rw,
 			fmt.Sprintf("user with ID: '%d' was updated sucessfully, but failed to retrieve it",
+				user.ID),
+			http.StatusInternalServerError)
+	}
+}
+
+func (h *User) delete(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("received a DELETE user request")
+
+	// get user id
+	deleteUserRe := regexp.MustCompile(`^/users/(\d+)$`)
+	userID, err := getID(*deleteUserRe, r.URL.Path)
+	if err != nil {
+		http.Error(rw, data.UserIDError, http.StatusNotFound)
+		return
+	}
+
+	// delete user from datastore
+	user, err := data.RemoveUser(uint64(userID))
+	if err != nil {
+		http.Error(rw, data.UserNotFoundError, http.StatusNotFound)
+		return
+	}
+
+	// return deleted user
+	if err := user.ToJSON(rw); err != nil {
+		http.Error(rw,
+			fmt.Sprintf("user with ID: '%d' was deleted, but failed to retrieve it",
 				user.ID),
 			http.StatusInternalServerError)
 	}

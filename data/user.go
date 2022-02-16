@@ -57,7 +57,7 @@ func userExists(id uint64) (int, *User, error) {
 	defer userRWMutex.RUnlock()
 
 	for i, u := range usersList {
-		if id == uint64(i) {
+		if id == u.ID {
 			tmp := &User{}
 			*tmp = *u // copy current user info
 			return i, tmp, nil
@@ -167,6 +167,32 @@ func AddNewUser(u *User) {
 	userRWMutex.Lock()
 	usersList = append(usersList, u)
 	userRWMutex.Unlock()
+}
+
+func RemoveUser(id uint64) (*User, error) {
+	index, user, err := userExists(id)
+	if err != nil {
+		return nil, err
+	}
+
+	deletedUser := &User{}
+
+	userRWMutex.Lock()
+	*deletedUser = *user
+	tmpList := make(Users, 0, len(usersList)-1)
+
+	for i, u := range usersList {
+		if i == index {
+			continue
+		}
+
+		tmpList = append(tmpList, u)
+	}
+	usersList = tmpList
+
+	userRWMutex.Unlock()
+
+	return deletedUser, nil
 }
 
 func (us *Users) ToJSON(w io.Writer) error {

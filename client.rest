@@ -65,7 +65,7 @@ GET http://localhost:8080/users HTTP/1.1
 
 ### Get single user
 
-GET http://localhost:8080/users/01 HTTP/1.1
+GET http://localhost:8080/users/1 HTTP/1.1
 
 ### Add new user
 
@@ -85,7 +85,7 @@ content-type: application/json
 
 ### Update single user
 
-PUT http://localhost:8080/users/0 HTTP/1.1
+PUT http://localhost:8080/users/1 HTTP/1.1
 content-type: application/json
 
 { 
@@ -102,7 +102,7 @@ content-type: application/json
 
 ### Update user attributes
 
-PATCH http://localhost:8080/users/0 HTTP/1.1
+PATCH http://localhost:8080/users/1 HTTP/1.1
 content-type: application/json
 
 { 
@@ -111,3 +111,7 @@ content-type: application/json
     "name": "julia",
     "number": 12345
 }
+
+### Delete single user
+
+DELETE http://localhost:8080/users/1 HTTP/1.1
