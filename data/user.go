@@ -91,6 +91,69 @@ func GetUser(id uint64) (*User, error) {
 	return user, nil
 }
 
+func UpdateUser(user *User) error {
+	userRWMutex.Lock()
+	defer userRWMutex.Unlock()
+
+	for i, u := range usersList {
+		if u.ID == user.ID {
+			usersList[i] = user
+			return nil
+		}
+	}
+
+	return fmt.Errorf("user does not exist")
+}
+
+func SetUser(user *User) error {
+	userRWMutex.Lock()
+	defer userRWMutex.Unlock()
+
+	// TODO: optimize this loop by using the userExists() function
+	// and using a better data structure.
+	for i, u := range usersList {
+		if u.ID == user.ID {
+			if user.Username != "" {
+				usersList[i].Username = user.Username
+			}
+
+			if user.Password != "" {
+				usersList[i].Password = user.Password
+			}
+
+			if user.Name != "" {
+				usersList[i].Name = user.Name
+			}
+
+			if user.Phone != "" {
+				usersList[i].Phone = user.Phone
+			}
+
+			if user.City != "" {
+				usersList[i].City = user.City
+			}
+
+			if user.Street != "" {
+				usersList[i].Street = user.Street
+			}
+
+			if user.Number != 0 {
+				usersList[i].Number = user.Number
+			}
+
+			if user.ZipCode != "" {
+				usersList[i].ZipCode = user.ZipCode
+			}
+
+			// set temporary product equal to original product
+			*user = *usersList[i]
+			return nil
+		}
+	}
+
+	return fmt.Errorf("product not found")
+}
+
 func AddNewUser(u *User) {
 	u.ID = getNextUserID()
 

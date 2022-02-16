@@ -10,9 +10,11 @@ import (
 )
 
 var (
-	listUsersRe = regexp.MustCompile(`^/users[/]?$`)
-	getUserRe   = regexp.MustCompile(`^/users/(\d+)$`)
-	crateUserRe = regexp.MustCompile(`^/users[/]?$`)
+	listUsersRe  = regexp.MustCompile(`^/users[/]?$`)
+	getUserRe    = regexp.MustCompile(`^/users/(\d+)$`)
+	crateUserRe  = regexp.MustCompile(`^/users[/]?$`)
+	putUserRe    = regexp.MustCompile(`^/users/(\d+)$`)
+	updateUserRe = regexp.MustCompile(`^/users/(\d+)$`)
 )
 
 type User struct {
@@ -21,6 +23,29 @@ type User struct {
 
 func NewUser(l *log.Logger) *User {
 	return &User{l}
+}
+
+func parseUser(regex *regexp.Regexp, r *http.Request) (*data.User, error) {
+	// try to parse user id
+	id, err := getID(*regex, r.URL.Path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id")
+	}
+
+	// decode the user from the request body
+	user := &data.User{}
+	if err := user.FromJSON(r.Body); err != nil {
+		return nil, fmt.Errorf("invalid user payload")
+	}
+
+	// avoid nil pointer reference error when none of Address struct
+	// fields is provided in the payload.
+	if user.Address == nil {
+		user.Address = &data.Address{}
+	}
+
+	user.ID = uint64(id)
+	return user, nil
 }
 
 func (h *User) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
@@ -38,6 +63,10 @@ func (h *User) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	case r.Method == http.MethodPost && crateUserRe.MatchString(r.URL.Path):
 		h.create(rw, r)
+		return
+
+	case r.Method == http.MethodPut || r.Method == http.MethodPatch && updateUserRe.MatchString(r.URL.Path):
+		h.update(rw, r)
 		return
 
 	default:
@@ -95,6 +124,39 @@ func (h *User) create(rw http.ResponseWriter, r *http.Request) {
 		http.Error(rw,
 			fmt.Sprintf("user created with ID: '%d', but failed to retrieve it",
 				newUser.ID),
+			http.StatusInternalServerError)
+	}
+}
+
+func (h *User) update(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("received a PUT user request")
+
+	// try to parse user from request object
+	user, err := parseUser(updateUserRe, r)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	if r.Method == http.MethodPut {
+		// update whole user information
+		if err := data.UpdateUser(user); err != nil {
+			http.Error(rw, err.Error(), http.StatusNotFound)
+			return
+		}
+	} else if r.Method == http.MethodPatch {
+		// update user attributes
+		if err := data.SetUser(user); err != nil {
+			http.Error(rw, err.Error(), http.StatusNotFound)
+			return
+		}
+	}
+
+	// return updated user
+	if err := user.ToJSON(rw); err != nil {
+		http.Error(rw,
+			fmt.Sprintf("user with ID: '%d' was updated sucessfully, but failed to retrieve it",
+				user.ID),
 			http.StatusInternalServerError)
 	}
 }

@@ -65,7 +65,7 @@ GET http://localhost:8080/users HTTP/1.1
 
 ### Get single user
 
-GET http://localhost:8080/users/02 HTTP/1.1
+GET http://localhost:8080/users/01 HTTP/1.1
 
 ### Add new user
 
@@ -81,4 +81,33 @@ content-type: application/json
     "street": "Av. 25 de Setembro", 
     "number": 13178,
     "zip_code": "4548"
+}
+
+### Update single user
+
+PUT http://localhost:8080/users/0 HTTP/1.1
+content-type: application/json
+
+{ 
+    "username": "bear",
+    "password": "2292n^722-/2$#@!",
+    "name": "Julia Punk",
+    "phone": "8239042",
+    "city": "Latorre, Comores",
+    "street": "LaTorre De Sa", 
+    "number": 13178,
+    "zip_code": "4548"
+}
+
+
+### Update user attributes
+
+PATCH http://localhost:8080/users/0 HTTP/1.1
+content-type: application/json
+
+{ 
+    "username": "marilia",
+    "password": "marilia32",
+    "name": "julia",
+    "number": 12345
 }
