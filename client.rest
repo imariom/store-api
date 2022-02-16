@@ -4,7 +4,7 @@ GET http://localhost:8080/products HTTP/1.1
 
 ### Get a single product
 
-GET http://localhost:8080/products/2 HTTP/1.1
+GET http://localhost:8080/products/0 HTTP/1.1
 
 ### Add new product
 POST http://localhost:8080/products HTTP/1.1
@@ -51,3 +51,18 @@ GET http://localhost:8080/products/categories/hats HTTP/1.1
 ### Delete a product
 
 DELETE http://localhost:8080/products/0 HTTP/1.1
+
+
+### Get all carts
+
+GET http://localhost:8080/cart HTTP/1.1
+
+
+### Get all users
+
+GET http://localhost:8080/users HTTP/1.1
+
+
+### Get single user
+
+GET http://localhost:8080/users/0 HTTP/1.1
