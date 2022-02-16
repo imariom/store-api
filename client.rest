@@ -65,4 +65,20 @@ GET http://localhost:8080/users HTTP/1.1
 
 ### Get single user
 
-GET http://localhost:8080/users/0 HTTP/1.1
+GET http://localhost:8080/users/02 HTTP/1.1
+
+### Add new user
+
+POST http://localhost:8080/users HTTP/1.1
+content-type: application/json
+
+{ 
+    "username": "imariom",
+    "password": "Mutemba32",
+    "name": "Mario Moiane",
+    "phone": "846659087",
+    "city": "Matola, Maputo-Mozambique",
+    "street": "Av. 25 de Setembro", 
+    "number": 13178,
+    "zip_code": "4548"
+}

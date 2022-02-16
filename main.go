@@ -15,11 +15,19 @@ func main() {
 
 	// api handlers
 	productHandler := handlers.NewProduct(logger)
+	cartHandler := handlers.NewCart(logger)
+	usersHandler := handlers.NewUser(logger)
 
 	// multiplexer
 	mux := http.NewServeMux()
 	mux.Handle("/products/", productHandler)
 	mux.Handle("/products", productHandler)
+
+	mux.Handle("/cart/", cartHandler)
+	mux.Handle("/cart", cartHandler)
+
+	mux.Handle("/users/", usersHandler)
+	mux.Handle("/users", usersHandler)
 
 	// create and run server
 	server.Run(&server.Options{

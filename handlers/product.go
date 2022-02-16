@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"strconv"
 
 	"github.com/imariom/products-api/data"
 )
@@ -37,7 +36,7 @@ func NewProduct(l *log.Logger) *Product {
 
 func getProduct(regex regexp.Regexp, r *http.Request) (*data.Product, error) {
 	// try get the id of the product
-	id, err := getProductId(regex, r.URL.Path)
+	id, err := getID(regex, r.URL.Path)
 	if err != nil {
 		return nil, ProductNotFound
 	}
@@ -50,19 +49,6 @@ func getProduct(regex regexp.Regexp, r *http.Request) (*data.Product, error) {
 	product.ID = uint64(id)
 
 	return product, nil
-}
-
-func getProductId(regex regexp.Regexp, exp string) (int, error) {
-	// parse id from expression
-	matches := regex.FindStringSubmatch(exp)
-	if len(matches) < 2 {
-		return -1, fmt.Errorf("id not found")
-	}
-
-	// convert id to integer
-	id, _ := strconv.Atoi(matches[1])
-
-	return id, nil
 }
 
 func (h *Product) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
@@ -231,7 +217,7 @@ func (h *Product) Get(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a GET request")
 
 	// get product id
-	productID, err := getProductId(*getProductRe, r.URL.Path)
+	productID, err := getID(*getProductRe, r.URL.Path)
 	if err != nil {
 		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
 		return
@@ -254,7 +240,7 @@ func (h *Product) Delete(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a DELETE request")
 
 	// get product id
-	productID, err := getProductId(*deleteProductRe, r.URL.Path)
+	productID, err := getID(*deleteProductRe, r.URL.Path)
 	if err != nil {
 		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
 		return
