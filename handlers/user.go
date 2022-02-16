@@ -9,42 +9,51 @@ import (
 	"github.com/imariom/products-api/data"
 )
 
+// User represents the HTTP handler for the HTTP request multiplexer
+// with '/users[/]?' pattern.
 type User struct {
+	// logger represents the log object used to log all necessary
+	// information of the API.
 	logger *log.Logger
 }
 
+// NewUser allocates and construct a new User handler provided
+// a logger object.
 func NewUser(l *log.Logger) *User {
 	return &User{l}
 }
 
+// parseUser try to parse user data from incoming request.
 func parseUser(regex *regexp.Regexp, r *http.Request) (*data.User, error) {
 	// try to parse user id
-	id, err := getID(*regex, r.URL.Path)
+	id, err := getItemID(regex, r.URL.Path)
 	if err != nil {
 		return nil, fmt.Errorf(data.UserIDError)
 	}
 
-	// decode the user from the request body
+	// try to decode user from request body
 	user := &data.User{}
 	if err := user.FromJSON(r.Body); err != nil {
 		return nil, fmt.Errorf(data.UserPayloadError)
 	}
 
-	// This block avoid nil pointer reference error when none of
-	// Address struct fields is provided in the payload.
+	// This block avoid nil pointer reference error (panic) when none of
+	// Address struct fields is provided in the incoming payload.
 	if user.Address == nil {
 		user.Address = &data.Address{}
 	}
 
-	user.ID = uint64(id)
+	user.ID = id
 	return user, nil
 }
 
+// ServeHTTP is the http.Handler interface implementation method for
+// User handler.
 func (h *User) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	// set API to be json based (send and receive JSON data)
+	// set API to be JSON based (send and receive JSON data)
 	rw.Header().Set("Content-Type", "application/json")
 
-	// route each incoming request
+	// route each incoming request to specific handler
 	switch r.Method {
 	case http.MethodGet:
 		h.get(rw, r)
@@ -69,6 +78,8 @@ func (h *User) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// get get a list or single user from data store and return it
+// back to the client.
 func (h *User) get(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a GET user request")
 
@@ -89,7 +100,7 @@ func (h *User) get(rw http.ResponseWriter, r *http.Request) {
 	// serve get user request
 	getUserRe := regexp.MustCompile(`^/users/(\d+)$`)
 	if getUserRe.MatchString(r.URL.Path) {
-		userID, err := getID(*getUserRe, r.URL.Path)
+		userID, err := getItemID(getUserRe, r.URL.Path)
 		if err != nil {
 			http.Error(rw, data.UserNotFoundError, http.StatusNotFound)
 			return
@@ -111,6 +122,8 @@ func (h *User) get(rw http.ResponseWriter, r *http.Request) {
 	http.Error(rw, "bad GET request", http.StatusBadRequest)
 }
 
+// create create and store new user on the data store
+// retrieving this user back to the client.
 func (h *User) create(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a POST user request")
 
@@ -133,12 +146,14 @@ func (h *User) create(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// update update all or specic attributes of a single user
+// and return the updated user back to the client.
 func (h *User) update(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a PUT user request")
 
-	// try to parse user from request object
 	updateUserRe := regexp.MustCompile(`^/users/(\d+)$`)
 
+	// try to parse user from request object
 	user, err := parseUser(updateUserRe, r)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusNotFound)
@@ -169,12 +184,15 @@ func (h *User) update(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// delete remove from the data store a single user and retrieve it
+// to the client.
 func (h *User) delete(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a DELETE user request")
 
-	// get user id
 	deleteUserRe := regexp.MustCompile(`^/users/(\d+)$`)
-	userID, err := getID(*deleteUserRe, r.URL.Path)
+
+	// get user id
+	userID, err := getItemID(deleteUserRe, r.URL.Path)
 	if err != nil {
 		http.Error(rw, data.UserIDError, http.StatusNotFound)
 		return
@@ -187,7 +205,7 @@ func (h *User) delete(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// return deleted user
+	// return deleted user to client
 	if err := user.ToJSON(rw); err != nil {
 		http.Error(rw,
 			fmt.Sprintf("user with ID: '%d' was deleted, but failed to retrieve it",

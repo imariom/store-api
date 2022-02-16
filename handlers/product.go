@@ -34,9 +34,9 @@ func NewProduct(l *log.Logger) *Product {
 	return &Product{l}
 }
 
-func getProduct(regex regexp.Regexp, r *http.Request) (*data.Product, error) {
+func getProduct(regex *regexp.Regexp, r *http.Request) (*data.Product, error) {
 	// try get the id of the product
-	id, err := getID(regex, r.URL.Path)
+	id, err := getItemID(regex, r.URL.Path)
 	if err != nil {
 		return nil, ProductNotFound
 	}
@@ -132,7 +132,7 @@ func (h *Product) Update(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a PUT request")
 
 	// try to get the product payload and id to be updated
-	product, err := getProduct(*updateProductRe, r)
+	product, err := getProduct(updateProductRe, r)
 	if err == ProductNotFound {
 		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
 		return
@@ -157,7 +157,7 @@ func (h *Product) Set(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a PATCH request")
 
 	// try to get the product payload and id to be updated (PATCH)
-	product, err := getProduct(*updateProductRe, r)
+	product, err := getProduct(updateProductRe, r)
 	if err == ProductNotFound {
 		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
 		return
@@ -217,7 +217,7 @@ func (h *Product) Get(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a GET request")
 
 	// get product id
-	productID, err := getID(*getProductRe, r.URL.Path)
+	productID, err := getItemID(getProductRe, r.URL.Path)
 	if err != nil {
 		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
 		return
@@ -240,7 +240,7 @@ func (h *Product) Delete(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a DELETE request")
 
 	// get product id
-	productID, err := getID(*deleteProductRe, r.URL.Path)
+	productID, err := getItemID(deleteProductRe, r.URL.Path)
 	if err != nil {
 		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
 		return

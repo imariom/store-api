@@ -163,7 +163,7 @@ func GetProductsByCategory(category string) Products {
 	return products
 }
 
-func GetProduct(id int) (*Product, error) {
+func GetProduct(id uint64) (*Product, error) {
 	product := &Product{}
 
 	// TODO: optimize productList to another data structure
@@ -171,7 +171,7 @@ func GetProduct(id int) (*Product, error) {
 	rwMtx.RLock()
 	defer rwMtx.RUnlock()
 	for _, p := range productList {
-		if p.ID == uint64(id) {
+		if p.ID == id {
 			*product = *p // to avoid reading concurrently accessed product
 			return product, nil
 		}
@@ -180,7 +180,7 @@ func GetProduct(id int) (*Product, error) {
 	return nil, fmt.Errorf("product not found")
 }
 
-func RemoveProduct(id int) (*Product, error) {
+func RemoveProduct(id uint64) (*Product, error) {
 	// checks wheter product exists
 	index, exists := productExists(uint64(id))
 	if !exists {
