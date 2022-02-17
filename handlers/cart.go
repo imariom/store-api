@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -23,6 +24,10 @@ func (h *Cart) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		h.get(rw, r)
+		return
+
+	case http.MethodPost:
+		h.create(rw, r)
 		return
 
 	default:
@@ -66,5 +71,27 @@ func (h *Cart) get(rw http.ResponseWriter, r *http.Request) {
 		if err := cart.ToJSON(rw); err != nil {
 			http.Error(rw, "failed to convert cart", http.StatusInternalServerError)
 		}
+	}
+}
+
+func (h *Cart) create(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("received a PUT request")
+
+	// parse cart from request object
+	cart := &data.Cart{}
+	if err := cart.FromJSON(r.Body); err != nil {
+		http.Error(rw, "invalid cart payload", http.StatusBadRequest)
+		return
+	}
+
+	// add cart to data store
+	data.AddCart(cart)
+
+	// try to return created cart
+	if err := cart.ToJSON(rw); err != nil {
+		http.Error(rw,
+			fmt.Sprintf("user created with ID: '%d', but failed to retrieve it",
+				cart.ID),
+			http.StatusInternalServerError)
 	}
 }

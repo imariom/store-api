@@ -61,6 +61,22 @@ GET http://localhost:8080/cart HTTP/1.1
 
 GET http://localhost:8080/cart/0 HTTP/1.1
 
+### Add new cart
+
+POST http://localhost:8080/cart HTTP/1.1
+content-type: application/json
+
+{ 
+    "userId": 1,
+    "date": "2022-02-17T00:00:00Z",
+    "products": [
+        {
+            "product_id": 2,
+            "quantity": 5
+        }
+    ]
+}
+
 
 ### Get all users
 

@@ -12,7 +12,7 @@ var cartsRWMtx = &sync.RWMutex{}
 
 type Item struct {
 	ProductID uint64 `json:"product_id"`
-	Quantity  uint16 `json:"quantity"`
+	Quantity  uint64 `json:"quantity"`
 }
 
 type Cart struct {
@@ -30,7 +30,7 @@ var cartList = Carts{
 		UserID: 0,
 		Date:   time.Now(),
 		Products: []Item{
-			Item{
+			{
 				ProductID: 0,
 				Quantity:  2,
 			},
@@ -51,6 +51,27 @@ func cartExists(id uint64) (int, *Cart, error) {
 	}
 
 	return -1, nil, fmt.Errorf("requested cart does not exist")
+}
+
+func getNextCartID() uint64 {
+	cartsRWMtx.RLock()
+	defer cartsRWMtx.RUnlock()
+
+	if len(cartList) == 0 {
+		return 0
+	}
+
+	lastCart := cartList[len(cartList)-1]
+
+	return lastCart.ID + 1
+}
+
+func AddCart(c *Cart) {
+	c.ID = getNextCartID()
+
+	cartsRWMtx.Lock()
+	cartList = append(cartList, c)
+	cartsRWMtx.Unlock()
 }
 
 func GetAllCarts() Carts {
@@ -81,4 +102,8 @@ func (cs *Carts) ToJSON(w io.Writer) error {
 
 func (c *Cart) ToJSON(w io.Writer) error {
 	return json.NewEncoder(w).Encode(c)
+}
+
+func (c *Cart) FromJSON(r io.Reader) error {
+	return json.NewDecoder(r).Decode(c)
 }
