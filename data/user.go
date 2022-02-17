@@ -52,7 +52,7 @@ type User struct {
 
 type Users []*User
 
-func userExists(id uint64) (int, *User, error) {
+func userExists(id uint64) (index int, user *User, err error) {
 	userRWMutex.RLock()
 	defer userRWMutex.RUnlock()
 

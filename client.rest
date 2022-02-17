@@ -57,6 +57,10 @@ DELETE http://localhost:8080/products/0 HTTP/1.1
 
 GET http://localhost:8080/cart HTTP/1.1
 
+### Get single cart
+
+GET http://localhost:8080/cart/0 HTTP/1.1
+
 
 ### Get all users
 

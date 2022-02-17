@@ -2,6 +2,7 @@ package data
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -37,6 +38,21 @@ var cartList = Carts{
 	},
 }
 
+func cartExists(id uint64) (int, *Cart, error) {
+	cartsRWMtx.RLock()
+	defer cartsRWMtx.RUnlock()
+
+	for i, c := range cartList {
+		if id == c.ID {
+			tmp := &Cart{}
+			*tmp = *c
+			return i, tmp, nil
+		}
+	}
+
+	return -1, nil, fmt.Errorf("requested cart does not exist")
+}
+
 func GetAllCarts() Carts {
 	// it is necessary to get a copy of each product from the
 	// memory to avoid returning a cartList that while is being
@@ -50,6 +66,19 @@ func GetAllCarts() Carts {
 	return temp
 }
 
-func (c *Carts) ToJSON(w io.Writer) error {
+func GetCart(id uint64) (*Cart, error) {
+	_, cart, err := cartExists(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return cart, nil
+}
+
+func (cs *Carts) ToJSON(w io.Writer) error {
+	return json.NewEncoder(w).Encode(cs)
+}
+
+func (c *Cart) ToJSON(w io.Writer) error {
 	return json.NewEncoder(w).Encode(c)
 }
