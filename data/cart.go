@@ -66,12 +66,16 @@ func getNextCartID() uint64 {
 	return lastCart.ID + 1
 }
 
-func AddCart(c *Cart) {
+func AddCart(c *Cart) error {
+	// TODO: validate if provided user_id and each product_id
+	// are valid (talk to users and products models to verify)
 	c.ID = getNextCartID()
 
 	cartsRWMtx.Lock()
 	cartList = append(cartList, c)
 	cartsRWMtx.Unlock()
+
+	return nil
 }
 
 func GetAllCarts() Carts {

@@ -151,9 +151,9 @@ func (h *User) create(rw http.ResponseWriter, r *http.Request) {
 func (h *User) update(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a PUT user request")
 
+	// try to parse user from request object
 	updateUserRe := regexp.MustCompile(`^/users/(\d+)$`)
 
-	// try to parse user from request object
 	user, err := parseUser(updateUserRe, r)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusNotFound)
