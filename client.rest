@@ -57,6 +57,11 @@ DELETE http://localhost:8080/products/0 HTTP/1.1
 
 GET http://localhost:8080/cart HTTP/1.1
 
+### Get all carts with a limit
+
+GET http://localhost:8080/cart?sort=desc HTTP/1.1
+
+
 ### Get single cart
 
 GET http://localhost:8080/cart/0 HTTP/1.1
@@ -67,8 +72,7 @@ POST http://localhost:8080/cart HTTP/1.1
 content-type: application/json
 
 { 
-    "userId": 1,
-    "date": "2022-02-17T00:00:00Z",
+    "userId": 5,
     "products": [
         {
             "product_id": 2,

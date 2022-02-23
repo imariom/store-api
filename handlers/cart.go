@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/imariom/products-api/data"
 )
@@ -40,9 +41,10 @@ func (h *Cart) get(rw http.ResponseWriter, r *http.Request) {
 
 	// list all carts
 	listCartsRe := regexp.MustCompile(`^/cart[/]?$`)
+	limitRes, sortCriteria := getQueryParams(r.URL.RawQuery)
 
 	if listCartsRe.MatchString(r.URL.Path) {
-		carts := data.GetAllCarts()
+		carts := data.GetAllCarts(limitRes, sortCriteria)
 
 		if err := carts.ToJSON(rw); err != nil {
 			msg := "internal server error, while converting carts to JSON"
@@ -83,6 +85,7 @@ func (h *Cart) create(rw http.ResponseWriter, r *http.Request) {
 		http.Error(rw, "invalid cart payload", http.StatusBadRequest)
 		return
 	}
+	cart.Date = time.Now()
 
 	// add cart to data store
 	data.AddCart(cart)
