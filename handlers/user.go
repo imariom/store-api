@@ -149,7 +149,11 @@ func (h *User) create(rw http.ResponseWriter, r *http.Request) {
 // update update all or specic attributes of a single user
 // and return the updated user back to the client.
 func (h *User) update(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("received a PUT user request")
+	if r.Method == http.MethodPut {
+		h.logger.Println("received a PUT user request")
+	} else if r.Method == http.MethodPatch {
+		h.logger.Println("received a PATCH user request")
+	}
 
 	// try to parse user from request object
 	updateUserRe := regexp.MustCompile(`^/users/(\d+)$`)

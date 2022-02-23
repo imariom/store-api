@@ -18,6 +18,28 @@ func NewCart(l *log.Logger) *Cart {
 	return &Cart{l}
 }
 
+// parseUser try to parse user data from incoming request.
+func parseCart(regex *regexp.Regexp, r *http.Request) (*data.Cart, error) {
+	// try to parse user id
+	id, err := getItemID(regex, r.URL.Path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cart ID")
+	}
+
+	// try to decode user from request body
+	cart := &data.Cart{}
+	if err := cart.FromJSON(r.Body); err != nil {
+		return nil, fmt.Errorf("invalid cart payload")
+	}
+
+	// this line update the current date and time, every
+	// update request must be updated to reflect change.
+	cart.Date = time.Now()
+
+	cart.ID = id
+	return cart, nil
+}
+
 func (h *Cart) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// set API to be json based (send and receive JSON data)
 	rw.Header().Set("Content-Type", "application/json")
@@ -35,8 +57,14 @@ func (h *Cart) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		h.delete(rw, r)
 		return
 
+	case http.MethodPut:
+		fallthrough
+	case http.MethodPatch:
+		h.update(rw, r)
+		return
+
 	default:
-		http.Error(rw, "HTTP ver not implemented", http.StatusNotImplemented)
+		http.Error(rw, "HTTP verb not implemented", http.StatusNotImplemented)
 	}
 }
 
@@ -126,6 +154,46 @@ func (h *Cart) delete(rw http.ResponseWriter, r *http.Request) {
 	if err := cart.ToJSON(rw); err != nil {
 		http.Error(rw,
 			fmt.Sprintf("cart with ID: '%d' was deleted, but failed to retrieve it",
+				cart.ID),
+			http.StatusInternalServerError)
+	}
+}
+
+func (h *Cart) update(rw http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPut {
+		h.logger.Println("received a PUT cart request")
+	} else if r.Method == http.MethodPatch {
+		h.logger.Println("received a PATCH cart request")
+	}
+
+	// try to parse cart from request object
+	updateCartRe := regexp.MustCompile(`^/cart/(\d+)$`)
+
+	cart, err := parseCart(updateCartRe, r)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// match request method (PUT or PATCH)
+	if r.Method == http.MethodPut {
+		// update whole cart information
+		if err := data.UpdateCart(cart); err != nil {
+			http.Error(rw, err.Error(), http.StatusNotFound)
+			return
+		}
+	} else if r.Method == http.MethodPatch {
+		// update cart attributes
+		if err := data.SetCart(cart); err != nil {
+			http.Error(rw, err.Error(), http.StatusNotFound)
+			return
+		}
+	}
+
+	// return updated cart
+	if err := cart.ToJSON(rw); err != nil {
+		http.Error(rw,
+			fmt.Sprintf("cart with ID: '%d' was updated sucessfully, but failed to retrieve it",
 				cart.ID),
 			http.StatusInternalServerError)
 	}

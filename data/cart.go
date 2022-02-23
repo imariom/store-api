@@ -104,6 +104,45 @@ func RemoveCart(id uint64) (*Cart, error) {
 	return deletedCart, nil
 }
 
+func UpdateCart(cart *Cart) error {
+	cartsRWMtx.Lock()
+	defer cartsRWMtx.Unlock()
+
+	for i, c := range cartList {
+		if c.ID == cart.ID {
+			cartList[i] = cart
+			return nil
+		}
+	}
+
+	return fmt.Errorf("requested cart does not exist")
+}
+
+func SetCart(cart *Cart) error {
+	cartsRWMtx.Lock()
+	defer cartsRWMtx.Unlock()
+
+	// TODO: optimize this loop by using the userExists() function
+	// and using a better data structure.
+	for i, c := range cartList {
+		if c.ID == cart.ID {
+			if cart.UserID != 0 {
+				cartList[i].UserID = cart.UserID
+			}
+
+			if cart.Products != nil {
+				cartList[i].Products = cart.Products
+			}
+
+			// set temporary cart equal to original product
+			*cart = *cartList[i]
+			return nil
+		}
+	}
+
+	return fmt.Errorf("requested cart does not exist")
+}
+
 func GetAllCarts(l int, s string) Carts {
 	// sort cart list
 	if s == "asc" {
