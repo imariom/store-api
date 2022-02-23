@@ -23,8 +23,8 @@ func main() {
 	mux.Handle("/products/", productHandler)
 	mux.Handle("/products", productHandler)
 
-	mux.Handle("/cart/", cartHandler)
-	mux.Handle("/cart", cartHandler)
+	mux.Handle("/carts/", cartHandler)
+	mux.Handle("/carts", cartHandler)
 
 	mux.Handle("/users/", usersHandler)
 	mux.Handle("/users", usersHandler)

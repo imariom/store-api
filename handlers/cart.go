@@ -72,7 +72,7 @@ func (h *Cart) get(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a GET request")
 
 	// list all carts
-	listCartsRe := regexp.MustCompile(`^/cart[/]?$`)
+	listCartsRe := regexp.MustCompile(`^/carts[/]?$`)
 	limitRes, sortCriteria := getQueryParams(r.URL.RawQuery)
 
 	if listCartsRe.MatchString(r.URL.Path) {
@@ -87,7 +87,7 @@ func (h *Cart) get(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// list single cart
-	getCartRe := regexp.MustCompile(`^/cart/(\d+)$`)
+	getCartRe := regexp.MustCompile(`^/carts/(\d+)$`)
 
 	if getCartRe.MatchString(r.URL.Path) {
 		cartID, err := getItemID(getCartRe, r.URL.Path)
@@ -104,6 +104,22 @@ func (h *Cart) get(rw http.ResponseWriter, r *http.Request) {
 
 		if err := cart.ToJSON(rw); err != nil {
 			http.Error(rw, "failed to convert cart", http.StatusInternalServerError)
+		}
+	}
+
+	// get all carts of a single user
+	listUserCartsRe := regexp.MustCompile(`^/carts/user/(\d+)$`)
+
+	if listUserCartsRe.MatchString(r.URL.Path) {
+		userID, err := getItemID(listUserCartsRe, r.URL.Path)
+		if err != nil {
+			http.Error(rw, "user ID not valid", http.StatusNotFound)
+			return
+		}
+
+		carts := data.GetAllUserCarts(userID)
+		if err := carts.ToJSON(rw); err != nil {
+			http.Error(rw, "failed to convert carts", http.StatusInternalServerError)
 		}
 	}
 }
@@ -134,7 +150,7 @@ func (h *Cart) create(rw http.ResponseWriter, r *http.Request) {
 func (h *Cart) delete(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a DELETE cart request")
 
-	deleteCartRe := regexp.MustCompile(`^/cart/(\d+)$`)
+	deleteCartRe := regexp.MustCompile(`^/carts/(\d+)$`)
 
 	// get cart id
 	cartID, err := getItemID(deleteCartRe, r.URL.Path)
@@ -167,7 +183,7 @@ func (h *Cart) update(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// try to parse cart from request object
-	updateCartRe := regexp.MustCompile(`^/cart/(\d+)$`)
+	updateCartRe := regexp.MustCompile(`^/carts/(\d+)$`)
 
 	cart, err := parseCart(updateCartRe, r)
 	if err != nil {

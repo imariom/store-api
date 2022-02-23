@@ -170,6 +170,20 @@ func GetAllCarts(l int, s string) Carts {
 	return temp
 }
 
+func GetAllUserCarts(userID uint64) Carts {
+	cartsRWMtx.RLock()
+	defer cartsRWMtx.RUnlock()
+
+	tmpCarts := make(Carts, 0)
+	for _, c := range cartList {
+		if c.UserID == userID {
+			tmpCarts = append(tmpCarts, c)
+		}
+	}
+
+	return tmpCarts
+}
+
 func GetCart(id uint64) (*Cart, error) {
 	_, cart, err := cartExists(id)
 	if err != nil {
