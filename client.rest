@@ -72,7 +72,7 @@ POST http://localhost:8080/cart HTTP/1.1
 content-type: application/json
 
 { 
-    "userId": 5,
+    "userId": 3,
     "products": [
         {
             "product_id": 2,
@@ -80,6 +80,11 @@ content-type: application/json
         }
     ]
 }
+
+### Delete a single cart
+
+DELETE http://localhost:8080/cart/2 HTTP/1.1
+
 
 
 ### Get all users

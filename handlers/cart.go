@@ -31,6 +31,10 @@ func (h *Cart) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		h.create(rw, r)
 		return
 
+	case http.MethodDelete:
+		h.delete(rw, r)
+		return
+
 	default:
 		http.Error(rw, "HTTP ver not implemented", http.StatusNotImplemented)
 	}
@@ -94,6 +98,34 @@ func (h *Cart) create(rw http.ResponseWriter, r *http.Request) {
 	if err := cart.ToJSON(rw); err != nil {
 		http.Error(rw,
 			fmt.Sprintf("user created with ID: '%d', but failed to retrieve it",
+				cart.ID),
+			http.StatusInternalServerError)
+	}
+}
+
+func (h *Cart) delete(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("received a DELETE cart request")
+
+	deleteCartRe := regexp.MustCompile(`^/cart/(\d+)$`)
+
+	// get cart id
+	cartID, err := getItemID(deleteCartRe, r.URL.Path)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// delete cart from datastore
+	cart, err := data.RemoveCart(cartID)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// return deleted cart to client
+	if err := cart.ToJSON(rw); err != nil {
+		http.Error(rw,
+			fmt.Sprintf("cart with ID: '%d' was deleted, but failed to retrieve it",
 				cart.ID),
 			http.StatusInternalServerError)
 	}

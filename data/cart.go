@@ -79,6 +79,31 @@ func AddCart(c *Cart) error {
 	return nil
 }
 
+func RemoveCart(id uint64) (*Cart, error) {
+	index, cart, err := cartExists(id)
+	if err != nil {
+		return nil, err
+	}
+
+	deletedCart := &Cart{}
+
+	cartsRWMtx.Lock()
+	*deletedCart = *cart
+	tmpList := make(Carts, 0, len(cartList)-1)
+
+	for i, c := range cartList {
+		if i == index {
+			continue
+		}
+
+		tmpList = append(tmpList, c)
+	}
+	cartList = tmpList
+	cartsRWMtx.Unlock()
+
+	return deletedCart, nil
+}
+
 func GetAllCarts(l int, s string) Carts {
 	// sort cart list
 	if s == "asc" {
