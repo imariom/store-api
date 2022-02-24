@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"sync"
 )
 
@@ -50,13 +51,57 @@ type Products []*Product
 // and easy enconding and retrieve of the data for the client.
 type Categories map[string]uint16
 
-// GetAllProducts retrieve a slice of all products that
-// exist on the data store.
-func GetAllProducts() Products {
+func getNextProductId() uint64 {
 	productsRWMtx.RLock()
 	defer productsRWMtx.RUnlock()
 
-	return productList
+	if len(productList) == 0 {
+		return 0
+	}
+
+	lastProduct := productList[len(productList)-1]
+
+	return lastProduct.ID + 1
+}
+
+func productExists(id uint64) (int, bool) {
+	productsRWMtx.RLock()
+	for i, p := range productList {
+		if p.ID == id {
+			return i, true
+		}
+	}
+	productsRWMtx.RUnlock()
+
+	return -1, false
+}
+
+// GetAllProducts retrieve a slice of all products that
+// exist on the data store.
+func GetAllProducts(limitRes int, sortCriteria string) Products {
+	// sort products
+	if sortCriteria == "asc" {
+		// sort products in ascending order of price
+		sort.Sort(&productList)
+	} else if sortCriteria == "desc" {
+		// sort products in descending order of price
+		sort.Sort(sort.Reverse(&productList))
+	}
+
+	// limit number of products to return
+	if limitRes <= 0 || limitRes >= productList.Len() {
+		limitRes = productList.Len()
+	}
+
+	productsRWMtx.RLock()
+	defer productsRWMtx.RUnlock()
+
+	tmpProducts := make(Products, 0, limitRes)
+	for i := 0; i != limitRes; i++ {
+		tmpProducts = append(tmpProducts, productList[i])
+	}
+
+	return tmpProducts
 }
 
 // GetProduct get and retrieve a product from the data store.
@@ -116,7 +161,7 @@ func GetProductsByCategory(category string) Products {
 }
 
 func AddNewProduct(p *Product) {
-	p.ID = getNextID()
+	p.ID = getNextProductId()
 
 	productsRWMtx.Lock()
 	productList = append(productList, p)
@@ -175,55 +220,6 @@ func SetProduct(prod *Product) error {
 	return fmt.Errorf("product does not exist")
 }
 
-func getNextID() uint64 {
-	productsRWMtx.RLock()
-	defer productsRWMtx.RUnlock()
-
-	if len(productList) == 0 {
-		return 0
-	}
-
-	// assumes the product with ID 0 will never be deleted
-	lastProduct := productList[len(productList)-1]
-
-	return lastProduct.ID + 1
-}
-
-func productExists(id uint64) (int, bool) {
-	productsRWMtx.RLock()
-	for i, p := range productList {
-		if p.ID == id {
-			return i, true
-		}
-	}
-	productsRWMtx.RUnlock()
-
-	return -1, false
-}
-
-func (ps *Products) ToJSON(w io.Writer) error {
-	return json.NewEncoder(w).Encode(ps)
-}
-
-func (ps *Products) CategoriesToJSON(w io.Writer) error {
-	// get all categories <category, COUNT>
-	tmpCategories := make(map[string]uint64, 0)
-
-	productsRWMtx.RLock()
-	for _, p := range productList {
-		tmpCategories[p.Category] = tmpCategories[p.Category] + 1
-	}
-	productsRWMtx.RUnlock()
-
-	// get only category name
-	categories := make([]string, 0)
-	for category, _ := range tmpCategories {
-		categories = append(categories, category)
-	}
-
-	return json.NewEncoder(w).Encode(categories)
-}
-
 func RemoveProduct(id uint64) (*Product, error) {
 	// checks wheter product exists
 	index, exists := productExists(uint64(id))
@@ -252,6 +248,29 @@ func RemoveProduct(id uint64) (*Product, error) {
 	return deletedProduct, nil
 }
 
+func (ps *Products) ToJSON(w io.Writer) error {
+	return json.NewEncoder(w).Encode(ps)
+}
+
+func (ps *Products) CategoriesToJSON(w io.Writer) error {
+	// get all categories <category, COUNT>
+	tmpCategories := make(map[string]uint64, 0)
+
+	productsRWMtx.RLock()
+	for _, p := range productList {
+		tmpCategories[p.Category] = tmpCategories[p.Category] + 1
+	}
+	productsRWMtx.RUnlock()
+
+	// get only category name
+	categories := make([]string, 0)
+	for category, _ := range tmpCategories {
+		categories = append(categories, category)
+	}
+
+	return json.NewEncoder(w).Encode(categories)
+}
+
 func (p *Product) FromJSON(r io.Reader) error {
 	return json.NewDecoder(r).Decode(p)
 }
@@ -262,4 +281,30 @@ func (p *Product) ToJSON(w io.Writer) error {
 
 func (c *Categories) ToJSON(w io.Writer) error {
 	return json.NewEncoder(w).Encode(c)
+}
+
+// Len is the number of elements in the collection productList.
+func (p *Products) Len() int {
+	productsRWMtx.RLock()
+	length := len(productList)
+	productsRWMtx.RUnlock()
+
+	return length
+}
+
+// Less reports whether the product with index i
+// must sort before the product with index j.
+func (p *Products) Less(i, j int) bool {
+	productsRWMtx.RLock()
+	defer productsRWMtx.RUnlock()
+
+	return productList[i].Price < productList[j].Price
+}
+
+// Swap swaps the products with indexes i and j.
+func (p *Products) Swap(i, j int) {
+	productsRWMtx.Lock()
+	defer productsRWMtx.Unlock()
+
+	productList[i], productList[j] = productList[j], productList[i]
 }

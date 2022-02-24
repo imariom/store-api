@@ -14,8 +14,17 @@ GET http://localhost:8080/products/categories HTTP/1.1
 
 GET http://localhost:8080/products/categories/cheatsheets HTTP/1.1
 
+### limit product results
+
+GET http://localhost:8080/products?limit=2 HTTP/1.1
+
+### sort resutls: 'asc' or 'desc'
+
+GET http://localhost:8080/products?sort=desc HTTP/1.1
+
 
 ### Add new product
+
 POST http://localhost:8080/products HTTP/1.1
 content-type: application/json
 
@@ -24,7 +33,7 @@ content-type: application/json
     "description": "Modern, fast, reliable and productive",
     "category": "cheatsheet",
     "image": "",
-    "price": 49.99
+    "price": 9.99
 }
 
 ### Update a single product
