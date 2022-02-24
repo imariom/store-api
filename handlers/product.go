@@ -232,7 +232,8 @@ func (h *Product) update(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// delete removes (delete) and retrieve single product from the data store.
+// delete handle DELETE request on a single product. It removes the
+// product from the data store and retrieve this deleted product.
 func (h *Product) delete(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("[INFO] received a DELETE product request")
 

@@ -12,7 +12,7 @@ GET http://localhost:8080/products/categories HTTP/1.1
 
 ### get all products by category: <category>
 
-GET http://localhost:8080/products/categories/cheatsheets HTTP/1.1
+GET http://localhost:8080/products/categories/books HTTP/1.1
 
 ### limit product results
 
@@ -20,7 +20,7 @@ GET http://localhost:8080/products?limit=2 HTTP/1.1
 
 ### sort resutls: 'asc' or 'desc'
 
-GET http://localhost:8080/products?sort=desc HTTP/1.1
+GET http://localhost:8080/products?sort=asc HTTP/1.1
 
 
 ### create new product
@@ -59,10 +59,12 @@ content-type: application/json
     "image": "https://www.isocpp.com/images/logo.png"
 }
 
-### Delete a product
+### delete a single product
 
-DELETE http://localhost:8080/products/0 HTTP/1.1
+DELETE http://localhost:8080/products/1 HTTP/1.1
 
+#####################################################################
+######################### CART ENDOINTS #############################
 #####################################################################
 
 ### Get all carts

@@ -66,12 +66,13 @@ func getNextProductId() uint64 {
 
 func productExists(id uint64) (int, bool) {
 	productsRWMtx.RLock()
+	defer productsRWMtx.RUnlock()
+
 	for i, p := range productList {
 		if p.ID == id {
 			return i, true
 		}
 	}
-	productsRWMtx.RUnlock()
 
 	return -1, false
 }
@@ -181,7 +182,7 @@ func UpdateProduct(prod *Product) error {
 		}
 	}
 
-	return fmt.Errorf("product does not exist")
+	return fmt.Errorf("product not found")
 }
 
 func SetProduct(prod *Product) error {
@@ -217,20 +218,21 @@ func SetProduct(prod *Product) error {
 		}
 	}
 
-	return fmt.Errorf("product does not exist")
+	return fmt.Errorf("product not found")
 }
 
 func RemoveProduct(id uint64) (*Product, error) {
 	// checks wheter product exists
 	index, exists := productExists(uint64(id))
 	if !exists {
-		return nil, fmt.Errorf("product does not exist")
+		return nil, fmt.Errorf("product not found")
 	}
 
 	deletedProduct := &Product{}
 
 	// remove product from datastore
 	productsRWMtx.RLock()
+
 	*deletedProduct = *productList[index]
 	tmpList := make(Products, 0, len(productList)-1)
 
@@ -250,25 +252,6 @@ func RemoveProduct(id uint64) (*Product, error) {
 
 func (ps *Products) ToJSON(w io.Writer) error {
 	return json.NewEncoder(w).Encode(ps)
-}
-
-func (ps *Products) CategoriesToJSON(w io.Writer) error {
-	// get all categories <category, COUNT>
-	tmpCategories := make(map[string]uint64, 0)
-
-	productsRWMtx.RLock()
-	for _, p := range productList {
-		tmpCategories[p.Category] = tmpCategories[p.Category] + 1
-	}
-	productsRWMtx.RUnlock()
-
-	// get only category name
-	categories := make([]string, 0)
-	for category, _ := range tmpCategories {
-		categories = append(categories, category)
-	}
-
-	return json.NewEncoder(w).Encode(categories)
 }
 
 func (p *Product) FromJSON(r io.Reader) error {
