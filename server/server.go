@@ -24,7 +24,7 @@ var serverCreated = false
 func Run(opts *Options) {
 	// reject if server was already created
 	if serverCreated {
-		errMsg := "server instance already running"
+		errMsg := "[ERROR] server instance already running"
 		opts.Logger.Panicln(errMsg)
 	}
 
@@ -43,7 +43,7 @@ func Run(opts *Options) {
 
 		err := server.ListenAndServe()
 		if err != http.ErrServerClosed {
-			opts.Logger.Panicln("failed to start server instance:", err.Error())
+			opts.Logger.Panicln("[PANIC] failed to start server instance:", err.Error())
 			serverCreated = false
 		}
 	}()
@@ -55,7 +55,7 @@ func Run(opts *Options) {
 
 	// waitisten for gracefull shutdown signals
 	sig := <-sigChan
-	opts.Logger.Println("received graceful shutdown - shuting down server:", sig)
+	opts.Logger.Println("[WARNING] received graceful shutdown - shuting down server:", sig)
 
 	// forcefully shutdown server after 30 seconds if there are pending jobs
 	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)

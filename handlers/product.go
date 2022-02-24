@@ -9,21 +9,6 @@ import (
 	"github.com/imariom/products-api/data"
 )
 
-var (
-	createProductRe = regexp.MustCompile(`^/products[/]*$`)
-
-	productCategoriesRe     = regexp.MustCompile(`^/products/categories[/]*$`)
-	getProductsByCategoryRe = regexp.MustCompile(`^/products/categories/(\w+)$`)
-	deleteProductRe         = regexp.MustCompile(`^/products/(\d+)$`)
-)
-
-var (
-	ProductNotFound     = fmt.Errorf("product not found")
-	InvalidPayload      = fmt.Errorf("invalid payload")
-	InternalServerError = fmt.Errorf("internal server error")
-	BadRequestError     = fmt.Errorf("bad request")
-)
-
 type Product struct {
 	logger *log.Logger
 }
@@ -36,13 +21,13 @@ func getProduct(regex *regexp.Regexp, r *http.Request) (*data.Product, error) {
 	// try get the id of the product
 	id, err := getItemID(regex, r.URL.Path)
 	if err != nil {
-		return nil, ProductNotFound
+		return nil, fmt.Errorf("product not found")
 	}
 
 	// decode the product from the request body
 	product := &data.Product{}
 	if err := product.FromJSON(r.Body); err != nil {
-		return nil, ProductNotFound
+		return nil, fmt.Errorf("product not found")
 	}
 	product.ID = uint64(id)
 
@@ -250,6 +235,8 @@ func (h *Product) update(rw http.ResponseWriter, r *http.Request) {
 // delete removes (delete) and retrieve single product from the data store.
 func (h *Product) delete(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("[INFO] received a DELETE product request")
+
+	deleteProductRe := regexp.MustCompile(`^/products/(\d+)$`)
 
 	// get product id
 	productID, err := getItemID(deleteProductRe, r.URL.Path)

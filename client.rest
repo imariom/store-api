@@ -36,26 +36,27 @@ content-type: application/json
     "price": 29.99
 }
 
-### Update a single product
+### update all product attributes
 
 PUT http://localhost:8080/products/0 HTTP/1.1
 content-type: application/json
 
 { 
     "name": "The C++ Programming Language",
-    "description": "Modern C++",
-    "category": "cheatsheet",
-    "image": "",
-    "price": 49.99
+    "description": "C++11, C++14, C++17, C++20",
+    "category": "books",
+    "image": "https://imariom.com/cpp/images/oficial_log.jpg",
+    "price": 29.99
 }
 
-### Update attributes of a specific product
+### update specific product attributes
 
 PATCH http://localhost:8080/products/0 HTTP/1.1
 content-type: application/json
 
 {  
-    "price": 21.38
+    "price": 21.38,
+    "image": "https://www.isocpp.com/images/logo.png"
 }
 
 ### Delete a product
