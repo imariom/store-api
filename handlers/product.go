@@ -10,12 +10,10 @@ import (
 )
 
 var (
-	listProductsRe          = regexp.MustCompile(`^/products[/]*$`)
 	createProductRe         = regexp.MustCompile(`^/products[/]*$`)
 	updateProductRe         = regexp.MustCompile(`^/products/(\d+)$`)
 	productCategoriesRe     = regexp.MustCompile(`^/products/categories[/]*$`)
 	getProductsByCategoryRe = regexp.MustCompile(`^/products/categories/(\w+)$`)
-	getProductRe            = regexp.MustCompile(`^/products/(\d+)$`)
 	deleteProductRe         = regexp.MustCompile(`^/products/(\d+)$`)
 )
 
@@ -56,8 +54,8 @@ func (h *Product) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 
 	switch {
-	case r.Method == http.MethodGet && listProductsRe.MatchString(r.URL.Path):
-		h.List(rw, r)
+	case r.Method == http.MethodGet:
+		h.get(rw, r)
 		return
 
 	case r.Method == http.MethodPost && createProductRe.MatchString(r.URL.Path):
@@ -72,18 +70,6 @@ func (h *Product) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		h.Set(rw, r)
 		return
 
-	case r.Method == http.MethodGet && productCategoriesRe.MatchString(r.URL.Path):
-		h.GetCategories(rw, r)
-		return
-
-	case r.Method == http.MethodGet && getProductsByCategoryRe.MatchString(r.URL.Path):
-		h.GetInCategory(rw, r)
-		return
-
-	case r.Method == http.MethodGet && getProductRe.MatchString(r.URL.Path):
-		h.Get(rw, r)
-		return
-
 	case r.Method == http.MethodDelete && deleteProductRe.MatchString(r.URL.Path):
 		h.Delete(rw, r)
 		return
@@ -96,16 +82,89 @@ func (h *Product) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Product) List(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("received a GET-list request")
+// get get all or a single product, it also allows to get
+// all products in a specific category or all categories that
+// exist on the data store.
+func (h *Product) get(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("[INFO] received a GET product request")
 
-	products := data.GetAllProducts()
-	if err := products.ToJSON(rw); err != nil {
-		msg := "internal server error, while converting products to JSON"
-		h.logger.Println("[ERROR]", msg)
-		http.Error(rw, msg, http.StatusInternalServerError)
+	urlPath := r.URL.Path
+
+	// get all products
+	listProductsRe := regexp.MustCompile(`^/products[/]?$`)
+
+	if listProductsRe.MatchString(urlPath) {
+		products := data.GetAllProducts()
+
+		if err := products.ToJSON(rw); err != nil {
+			http.Error(rw, "failed to retrieve products", http.StatusInternalServerError)
+		}
 		return
 	}
+
+	// get a single product
+	getProductRe := regexp.MustCompile(`^/products/(\d+)$`)
+
+	if getProductRe.MatchString(urlPath) {
+		// get product id
+		productId, err := getItemID(getProductRe, urlPath)
+		if err != nil {
+			http.Error(rw, "invalid product ID", http.StatusBadRequest)
+			return
+		}
+
+		// try to get product
+		product, err := data.GetProduct(productId)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusNotFound)
+			return
+		}
+
+		// try to return the product
+		if err := product.ToJSON(rw); err != nil {
+			http.Error(rw, "failed to retrieve product", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// get all product categories
+	categoriesRe := regexp.MustCompile(`^/products/categories[/]?$`)
+
+	if categoriesRe.MatchString(urlPath) {
+		products := data.GetAllCategories()
+
+		if err := products.ToJSON(rw); err != nil {
+			http.Error(rw, "failed to retrieve categories", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// get all products by category
+	productsByCategoryRe := regexp.MustCompile(`^/products/categories/(\w+)$`)
+
+	if productsByCategoryRe.MatchString(urlPath) {
+		// get category
+		matches := productsByCategoryRe.FindStringSubmatch(urlPath)
+		if len(matches) < 2 {
+			http.Error(rw, "category not found", http.StatusNotFound)
+			return
+		}
+
+		// try to get all products
+		products := data.GetProductsByCategory(matches[1])
+		if len(products) == 0 {
+			http.Error(rw, "category not found", http.StatusNotFound)
+			return
+		}
+
+		if err := products.ToJSON(rw); err != nil {
+			http.Error(rw, "failed to retrieve products", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// if none of the above url paths is satisfied consider this a bad request
+	http.Error(rw, "bad request", http.StatusBadRequest)
 }
 
 func (h *Product) Create(rw http.ResponseWriter, r *http.Request) {
@@ -178,15 +237,6 @@ func (h *Product) Set(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Product) GetCategories(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("recieved a GET-categories request")
-
-	products := data.GetAllProducts()
-	if err := products.CategoriesToJSON(rw); err != nil {
-		http.Error(rw, InternalServerError.Error(), http.StatusInternalServerError)
-	}
-}
-
 func (h *Product) GetInCategory(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a GET products in category request")
 
@@ -208,31 +258,6 @@ func (h *Product) GetInCategory(rw http.ResponseWriter, r *http.Request) {
 	if err := products.ToJSON(rw); err != nil {
 		http.Error(rw, InternalServerError.Error(), http.StatusInternalServerError)
 		return
-	}
-}
-
-// Limit results
-// Sort Results
-func (h *Product) Get(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("received a GET request")
-
-	// get product id
-	productID, err := getItemID(getProductRe, r.URL.Path)
-	if err != nil {
-		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
-		return
-	}
-
-	// get the product
-	product, err := data.GetProduct(productID)
-	if err != nil {
-		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
-		return
-	}
-
-	// try to return the product
-	if err := product.ToJSON(rw); err != nil {
-		http.Error(rw, InternalServerError.Error(), http.StatusInternalServerError)
 	}
 }
 

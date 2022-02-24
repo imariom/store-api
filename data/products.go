@@ -8,7 +8,7 @@ import (
 )
 
 // to protect read and write operations on the productList data store
-var rwMtx = &sync.RWMutex{}
+var productsRWMtx = &sync.RWMutex{}
 
 // in-memory product list data store
 var productList = Products{
@@ -31,26 +31,101 @@ type Product struct {
 	Price       float64 `json:"price"`
 }
 
+// Products represent the type of the In-Memory Data Store
+// 'productList'.
+//
+// It also was created to allow methods on the slice of
+// products used as data-store.
 type Products []*Product
 
+// Categories represent a key-value pair data structure to track
+// the number of times a category appears on the data store.
+// On the client side it is an object containing a list of
+// key-value pairs (the key represent the name of the category, and
+// the value the number of times that category appear on the data
+// store).
+//
+// It also was created as an alias to allow objects of this type
+// provide convenient methods such as ToJSON for readability
+// and easy enconding and retrieve of the data for the client.
+type Categories map[string]uint16
+
+// GetAllProducts retrieve a slice of all products that
+// exist on the data store.
 func GetAllProducts() Products {
-	rwMtx.RLock()
-	defer rwMtx.RUnlock()
+	productsRWMtx.RLock()
+	defer productsRWMtx.RUnlock()
 
 	return productList
+}
+
+// GetProduct get and retrieve a product from the data store.
+func GetProduct(prodId uint64) (*Product, error) {
+	product := &Product{}
+
+	productsRWMtx.RLock()
+	defer productsRWMtx.RUnlock()
+
+	// TODO: optimize productList to another data structure
+	// for fast reading and writing.
+	for _, prod := range productList {
+		if prod.ID == prodId {
+			*product = *prod // to avoid reading concurrently accessed product
+			return product, nil
+		}
+	}
+
+	return nil, fmt.Errorf("product not found")
+}
+
+// GetAllCategories return all the categories that exist on the data
+// store in the form of an object.
+// This object contains the name of the category and its count (the
+// number of times that category appear on the data store).
+// The object will contain a key-value pair in the form
+// { "category0": count, "category1": count, ... }
+func GetAllCategories() Categories {
+	categories := make(Categories, 0)
+
+	// prevent concurrent access
+	productsRWMtx.RLock()
+	defer productsRWMtx.RUnlock()
+
+	for _, p := range productList {
+		categories[p.Category] = categories[p.Category] + 1
+	}
+
+	return categories
+}
+
+// GetProductsByCategory retrieve all products on a specific
+// category in the data store.
+func GetProductsByCategory(category string) Products {
+	products := Products{}
+
+	productsRWMtx.RLock()
+	defer productsRWMtx.RUnlock()
+
+	for _, p := range productList {
+		if p.Category == category {
+			products = append(products, p)
+		}
+	}
+
+	return products
 }
 
 func AddNewProduct(p *Product) {
 	p.ID = getNextID()
 
-	rwMtx.Lock()
+	productsRWMtx.Lock()
 	productList = append(productList, p)
-	rwMtx.Unlock()
+	productsRWMtx.Unlock()
 }
 
 func UpdateProduct(prod *Product) error {
-	rwMtx.Lock()
-	defer rwMtx.Unlock()
+	productsRWMtx.Lock()
+	defer productsRWMtx.Unlock()
 
 	// TODO: optimize the productList data structure for
 	// reading and writing (e.g, map data structure)
@@ -65,8 +140,8 @@ func UpdateProduct(prod *Product) error {
 }
 
 func SetProduct(prod *Product) error {
-	rwMtx.Lock()
-	defer rwMtx.Unlock()
+	productsRWMtx.Lock()
+	defer productsRWMtx.Unlock()
 
 	for i, p := range productList {
 		if p.ID == prod.ID {
@@ -101,8 +176,8 @@ func SetProduct(prod *Product) error {
 }
 
 func getNextID() uint64 {
-	rwMtx.RLock()
-	defer rwMtx.RUnlock()
+	productsRWMtx.RLock()
+	defer productsRWMtx.RUnlock()
 
 	if len(productList) == 0 {
 		return 0
@@ -115,13 +190,13 @@ func getNextID() uint64 {
 }
 
 func productExists(id uint64) (int, bool) {
-	rwMtx.RLock()
+	productsRWMtx.RLock()
 	for i, p := range productList {
 		if p.ID == id {
 			return i, true
 		}
 	}
-	rwMtx.RUnlock()
+	productsRWMtx.RUnlock()
 
 	return -1, false
 }
@@ -134,11 +209,11 @@ func (ps *Products) CategoriesToJSON(w io.Writer) error {
 	// get all categories <category, COUNT>
 	tmpCategories := make(map[string]uint64, 0)
 
-	rwMtx.RLock()
+	productsRWMtx.RLock()
 	for _, p := range productList {
 		tmpCategories[p.Category] = tmpCategories[p.Category] + 1
 	}
-	rwMtx.RUnlock()
+	productsRWMtx.RUnlock()
 
 	// get only category name
 	categories := make([]string, 0)
@@ -147,37 +222,6 @@ func (ps *Products) CategoriesToJSON(w io.Writer) error {
 	}
 
 	return json.NewEncoder(w).Encode(categories)
-}
-
-func GetProductsByCategory(category string) Products {
-	products := Products{}
-
-	rwMtx.RLock()
-	for _, p := range productList {
-		if p.Category == category {
-			products = append(products, p)
-		}
-	}
-	rwMtx.RUnlock()
-
-	return products
-}
-
-func GetProduct(id uint64) (*Product, error) {
-	product := &Product{}
-
-	// TODO: optimize productList to another data structure
-	// for fast reading and writing
-	rwMtx.RLock()
-	defer rwMtx.RUnlock()
-	for _, p := range productList {
-		if p.ID == id {
-			*product = *p // to avoid reading concurrently accessed product
-			return product, nil
-		}
-	}
-
-	return nil, fmt.Errorf("product not found")
 }
 
 func RemoveProduct(id uint64) (*Product, error) {
@@ -190,7 +234,7 @@ func RemoveProduct(id uint64) (*Product, error) {
 	deletedProduct := &Product{}
 
 	// remove product from datastore
-	rwMtx.RLock()
+	productsRWMtx.RLock()
 	*deletedProduct = *productList[index]
 	tmpList := make(Products, 0, len(productList)-1)
 
@@ -203,7 +247,7 @@ func RemoveProduct(id uint64) (*Product, error) {
 	}
 	productList = tmpList
 
-	rwMtx.RUnlock()
+	productsRWMtx.RUnlock()
 
 	return deletedProduct, nil
 }
@@ -214,4 +258,8 @@ func (p *Product) FromJSON(r io.Reader) error {
 
 func (p *Product) ToJSON(w io.Writer) error {
 	return json.NewEncoder(w).Encode(p)
+}
+
+func (c *Categories) ToJSON(w io.Writer) error {
+	return json.NewEncoder(w).Encode(c)
 }
