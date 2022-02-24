@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	createProductRe         = regexp.MustCompile(`^/products[/]*$`)
-	updateProductRe         = regexp.MustCompile(`^/products/(\d+)$`)
+	createProductRe = regexp.MustCompile(`^/products[/]*$`)
+
 	productCategoriesRe     = regexp.MustCompile(`^/products/categories[/]*$`)
 	getProductsByCategoryRe = regexp.MustCompile(`^/products/categories/(\w+)$`)
 	deleteProductRe         = regexp.MustCompile(`^/products/(\d+)$`)
@@ -53,32 +53,51 @@ func (h *Product) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// set API to be json based (send and receive JSON data)
 	rw.Header().Set("Content-Type", "application/json")
 
-	switch {
-	case r.Method == http.MethodGet:
+	// route each incoming request to specific handler
+	switch r.Method {
+	case http.MethodPost:
+		h.create(rw, r)
+		return
+
+	case http.MethodGet:
 		h.get(rw, r)
 		return
 
-	case r.Method == http.MethodPost && createProductRe.MatchString(r.URL.Path):
-		h.Create(rw, r)
+	case http.MethodPut:
+		fallthrough
+	case http.MethodPatch:
+		h.update(rw, r)
 		return
 
-	case r.Method == http.MethodPut && updateProductRe.MatchString(r.URL.Path):
-		h.Update(rw, r)
-		return
-
-	case r.Method == http.MethodPatch && updateProductRe.MatchString(r.URL.Path):
-		h.Set(rw, r)
-		return
-
-	case r.Method == http.MethodDelete && deleteProductRe.MatchString(r.URL.Path):
-		h.Delete(rw, r)
+	case http.MethodDelete:
+		h.delete(rw, r)
 		return
 
 	default:
-		msg := "HTTP verb not implemented"
-		h.logger.Println(msg)
-		http.Error(rw, msg, http.StatusNotImplemented)
+		http.Error(rw, "HTTP verb not implemented", http.StatusNotImplemented)
 		return
+	}
+}
+
+// create parse and create new product from request body and
+// store this product on internal data store.
+func (h *Product) create(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("[INFO] received a POST product request")
+
+	// create and store new product on the data store
+	newProduct := &data.Product{}
+	if err := newProduct.FromJSON(r.Body); err != nil {
+		http.Error(rw, "invalid product payload", http.StatusBadRequest)
+		return
+	}
+	data.AddNewProduct(newProduct)
+
+	// try to return created product
+	if err := newProduct.ToJSON(rw); err != nil {
+		http.Error(rw,
+			fmt.Sprintf("product with ID '%d' was created, but failed to retrieve it",
+				newProduct.ID),
+			http.StatusInternalServerError)
 	}
 }
 
@@ -168,90 +187,81 @@ func (h *Product) get(rw http.ResponseWriter, r *http.Request) {
 	http.Error(rw, "bad request", http.StatusBadRequest)
 }
 
-func (h *Product) Create(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("received a POST request")
+// update handle PUT requests (when the whole product attributes
+// need to be updated), it handle PATCH requests when specific
+// attributes of a product need to be updated.
+func (h *Product) update(rw http.ResponseWriter, r *http.Request) {
+	// update all attrributes of a product
+	updateProductRe := regexp.MustCompile(`^/products/(\d+)$`)
 
-	// create and store new product on the data store
-	newProduct := &data.Product{}
-	if err := newProduct.FromJSON(r.Body); err != nil {
-		http.Error(rw, "payload not valid", http.StatusBadRequest)
+	if r.Method == http.MethodPut {
+		h.logger.Println("[INFO] received a PUT product request")
+
+		product, err := getProduct(updateProductRe, r)
+		if err != nil {
+			http.Error(rw, "product not found", http.StatusNotFound)
+			return
+		}
+
+		// update whole product information
+		if err := data.UpdateProduct(product); err != nil {
+			http.Error(rw, err.Error(), http.StatusNotFound)
+			return
+		}
+
+		// return updated product
+		if err := product.ToJSON(rw); err != nil {
+			http.Error(rw,
+				fmt.Sprintf("product with ID: '%d' was updated, but failed to retrieve it",
+					product.ID),
+				http.StatusInternalServerError)
+		}
+
 		return
 	}
-	data.AddNewProduct(newProduct)
 
-	// try to return created product
-	if err := newProduct.ToJSON(rw); err != nil {
-		http.Error(rw,
-			fmt.Sprintf("product created with ID: '%d', but failed to retrieve it",
-				newProduct.ID),
-			http.StatusInternalServerError)
+	// update specific attributes of a product
+	if r.Method == http.MethodPatch {
+		h.logger.Println("[INFO] received a PATCH product request")
+
+		// try to get the product payload and id to be updated (PATCH)
+		product, err := getProduct(updateProductRe, r)
+		if err != nil {
+			http.Error(rw, "product not found", http.StatusNotFound)
+			return
+		}
+
+		// update product attributes
+		if err := data.SetProduct(product); err != nil {
+			http.Error(rw, err.Error(), http.StatusNotFound)
+			return
+		}
+
+		// return updated product
+		if err := product.ToJSON(rw); err != nil {
+			http.Error(rw,
+				fmt.Sprintf("product with ID: '%d' was updated, but failed to retrieve it",
+					product.ID),
+				http.StatusInternalServerError)
+		}
 	}
 }
 
-func (h *Product) Update(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("received a PUT request")
-
-	// try to get the product payload and id to be updated
-	product, err := getProduct(updateProductRe, r)
-	if err == ProductNotFound {
-		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
-		return
-	}
-
-	// update whole product information
-	if err := data.UpdateProduct(product); err != nil {
-		http.Error(rw, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	// return updated product
-	if err := product.ToJSON(rw); err != nil {
-		http.Error(rw,
-			fmt.Sprintf("product with ID: '%d' was updated, but failed to retrieve it",
-				product.ID),
-			http.StatusInternalServerError)
-	}
-}
-
-func (h *Product) Set(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("received a PATCH request")
-
-	// try to get the product payload and id to be updated (PATCH)
-	product, err := getProduct(updateProductRe, r)
-	if err == ProductNotFound {
-		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
-		return
-	}
-
-	// update product attributes
-	if err := data.SetProduct(product); err != nil {
-		http.Error(rw, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	// return updated product
-	if err := product.ToJSON(rw); err != nil {
-		http.Error(rw,
-			fmt.Sprintf("product with ID: '%d' was updated, but failed to retrieve it",
-				product.ID),
-			http.StatusInternalServerError)
-	}
-}
-
-func (h *Product) Delete(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("received a DELETE request")
+// delete removes (delete) and retrieve single product from the data store.
+func (h *Product) delete(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("[INFO] received a DELETE product request")
 
 	// get product id
 	productID, err := getItemID(deleteProductRe, r.URL.Path)
 	if err != nil {
-		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
+		http.Error(rw, "invalid product ID", http.StatusNotFound)
 		return
 	}
 
 	// delete product from datastore
 	product, err := data.RemoveProduct(productID)
 	if err != nil {
-		http.Error(rw, ProductNotFound.Error(), http.StatusNotFound)
+		http.Error(rw, "product not found", http.StatusNotFound)
 		return
 	}
 
