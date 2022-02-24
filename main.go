@@ -11,7 +11,7 @@ import (
 
 func main() {
 	// Logger for the API
-	logger := log.New(os.Stdout, "[PRODUCT API]", log.LstdFlags)
+	logger := log.New(os.Stdout, "[PRODUCT API] ", log.LstdFlags)
 
 	// api handlers
 	productHandler := handlers.NewProduct(logger)

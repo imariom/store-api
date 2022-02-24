@@ -9,31 +9,42 @@ import (
 	"github.com/imariom/products-api/data"
 )
 
+// Product represent the HTTP handler. It handles and serve requests
+// of the client.
 type Product struct {
+	// logger is the object used to log information.
+	// The destination of the logs is defined somewhere
+	// by the user of the handler (normally on the main function).
 	logger *log.Logger
 }
 
+// NewProduct is a constructor for Product handler.
 func NewProduct(l *log.Logger) *Product {
 	return &Product{l}
 }
 
+// getProduct match regex parameter to the request URL path
+// and if it is able to parse and decode the product information
+// from the request it will create a new product and return it.
 func getProduct(regex *regexp.Regexp, r *http.Request) (*data.Product, error) {
-	// try get the id of the product
+	// try to get the id of the product
 	id, err := getItemID(regex, r.URL.Path)
 	if err != nil {
-		return nil, fmt.Errorf("product not found")
+		return nil, fmt.Errorf("invalid product id")
 	}
 
 	// decode the product from the request body
 	product := &data.Product{}
 	if err := product.FromJSON(r.Body); err != nil {
-		return nil, fmt.Errorf("product not found")
+		return nil, fmt.Errorf("invalid product payload")
 	}
 	product.ID = uint64(id)
 
 	return product, nil
 }
 
+// ServeHTTP is a method implementation of the http.Handler interface.
+// This method turns Product into an HTTP handler.
 func (h *Product) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// set API to be json based (send and receive JSON data)
 	rw.Header().Set("Content-Type", "application/json")
@@ -184,7 +195,7 @@ func (h *Product) update(rw http.ResponseWriter, r *http.Request) {
 
 		product, err := getProduct(updateProductRe, r)
 		if err != nil {
-			http.Error(rw, "product not found", http.StatusNotFound)
+			http.Error(rw, err.Error(), http.StatusNotFound)
 			return
 		}
 
@@ -212,7 +223,7 @@ func (h *Product) update(rw http.ResponseWriter, r *http.Request) {
 		// try to get the product payload and id to be updated (PATCH)
 		product, err := getProduct(updateProductRe, r)
 		if err != nil {
-			http.Error(rw, "product not found", http.StatusNotFound)
+			http.Error(rw, err.Error(), http.StatusNotFound)
 			return
 		}
 
