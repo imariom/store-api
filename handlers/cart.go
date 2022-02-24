@@ -122,6 +122,57 @@ func (h *Cart) get(rw http.ResponseWriter, r *http.Request) {
 			http.Error(rw, "failed to convert carts", http.StatusInternalServerError)
 		}
 	}
+
+	// get all carts in a date range (start? - end?)
+	listFullDateRangeRe := regexp.MustCompile(`^/carts/startdate=(\d{4}-\d{2}-\d{2})&enddate=(\d{4}-\d{2}-\d{2})$`)
+	listDateRangeRe := regexp.MustCompile(`^/carts/(startdate|enddate)=(\d{4}-\d{2}-\d{2})`)
+
+	if listFullDateRangeRe.MatchString(r.URL.Path) {
+		matches := listFullDateRangeRe.FindStringSubmatch(r.URL.Path)
+
+		startDate, err := time.Parse("2006-01-02", matches[1])
+		if err != nil {
+			http.Error(rw, "invalid start date", http.StatusBadRequest)
+			return
+		}
+
+		endDate, err := time.Parse("2006-01-02", matches[2])
+		if err != nil {
+			http.Error(rw, "invalid end date", http.StatusBadRequest)
+			return
+		}
+
+		carts := data.GetCartsInDateRange(startDate, endDate)
+		if err := carts.ToJSON(rw); err != nil {
+			http.Error(rw, "failed to convert carts", http.StatusInternalServerError)
+		}
+	} else if listDateRangeRe.MatchString(r.URL.Path) {
+		matches := listDateRangeRe.FindStringSubmatch(r.URL.Path)
+
+		if matches[1] == "startdate" {
+			startDate, err := time.Parse("2006-01-02", matches[2])
+			if err != nil {
+				http.Error(rw, "invalid start date", http.StatusBadRequest)
+				return
+			}
+
+			carts := data.GetCartsInDateRange(startDate, time.Time{})
+			if err := carts.ToJSON(rw); err != nil {
+				http.Error(rw, "failed to convert carts", http.StatusInternalServerError)
+			}
+		} else if matches[1] == "enddate" {
+			endDate, err := time.Parse("2006-01-02", matches[2])
+			if err != nil {
+				http.Error(rw, "invalid start date", http.StatusBadRequest)
+				return
+			}
+
+			carts := data.GetCartsInDateRange(time.Time{}, endDate)
+			if err := carts.ToJSON(rw); err != nil {
+				http.Error(rw, "failed to convert carts", http.StatusInternalServerError)
+			}
+		}
+	}
 }
 
 func (h *Cart) create(rw http.ResponseWriter, r *http.Request) {

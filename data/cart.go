@@ -184,6 +184,39 @@ func GetAllUserCarts(userID uint64) Carts {
 	return tmpCarts
 }
 
+func GetCartsInDateRange(start, end time.Time) Carts {
+	// get all carts with date after or starting from start and ending on end
+	cartsRWMtx.RLock()
+	defer cartsRWMtx.RUnlock()
+
+	tmpCarts := make(Carts, 0)
+	for _, c := range cartList {
+		// get all carts in the range (;end]
+		if start.IsZero() {
+			if c.Date.Equal(end) || c.Date.Before(end) {
+				tmpCarts = append(tmpCarts, c)
+			}
+			continue
+		}
+
+		// get all carts in the range [start;)
+		if end.IsZero() {
+			if c.Date.Equal(start) || c.Date.After(start) {
+				tmpCarts = append(tmpCarts, c)
+			}
+			continue
+		}
+
+		// get all carts in the range [start;end]
+		if (c.Date.Equal(start) || c.Date.After(start)) &&
+			(c.Date.Equal(end) || c.Date.Before(end)) {
+			tmpCarts = append(tmpCarts, c)
+		}
+	}
+
+	return tmpCarts
+}
+
 func GetCart(id uint64) (*Cart, error) {
 	_, cart, err := cartExists(id)
 	if err != nil {
