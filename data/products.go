@@ -23,6 +23,10 @@ var productList = Products{
 	},
 }
 
+// store next product id. Start with 1 because the API assumes
+// and initial product in the data store.
+var nextProductId uint64 = 1
+
 type Product struct {
 	ID          uint64  `json:"id"`
 	Name        string  `json:"name"`
@@ -52,16 +56,9 @@ type Products []*Product
 type Categories map[string]uint16
 
 func getNextProductId() uint64 {
-	productsRWMtx.RLock()
-	defer productsRWMtx.RUnlock()
-
-	if len(productList) == 0 {
-		return 0
-	}
-
-	lastProduct := productList[len(productList)-1]
-
-	return lastProduct.ID + 1
+	tempID := nextProductId
+	nextProductId += 1
+	return tempID
 }
 
 func productExists(id uint64) (int, bool) {

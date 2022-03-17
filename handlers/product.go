@@ -257,7 +257,7 @@ func (h *Product) delete(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// delete product from datastore
+	// delete product from data store
 	product, err := data.RemoveProduct(productID)
 	if err != nil {
 		http.Error(rw, "product not found", http.StatusNotFound)

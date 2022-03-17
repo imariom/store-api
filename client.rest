@@ -4,7 +4,7 @@ GET http://localhost:8080/products HTTP/1.1
 
 ### get a single product: <id>
 
-GET http://localhost:8080/products/0 HTTP/1.1
+GET http://localhost:8080/products/100 HTTP/1.1
 
 ### get all product categories
 
@@ -29,11 +29,11 @@ POST http://localhost:8080/products HTTP/1.1
 content-type: application/json
 
 { 
-    "name": "The C++ Programming Language",
-    "description": "C++11, C++14, C++17, C++20",
+    "name": "Effective Modern C++",
+    "description": "Modern techniques for professional",
     "category": "books",
-    "image": "",
-    "price": 29.99
+    "image": "https://unsplash.com/cpp/images/effective_modern_cpp.png",
+    "price": 0.99
 }
 
 ### update all product attributes
