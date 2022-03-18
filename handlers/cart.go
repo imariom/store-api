@@ -40,6 +40,8 @@ func parseCart(regex *regexp.Regexp, r *http.Request) (*data.Cart, error) {
 	return cart, nil
 }
 
+// ServeHTTP is a method implementation of the http.Handler interface.
+// This method turns Product into an HTTP handler.
 func (h *Cart) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// set API to be json based (send and receive JSON data)
 	rw.Header().Set("Content-Type", "application/json")
@@ -68,6 +70,32 @@ func (h *Cart) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// create parse and create new cart from request body and
+// store this product on internal data store.
+func (h *Cart) create(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("received a PUT request")
+
+	// parse cart from request object
+	cart := &data.Cart{}
+	if err := cart.FromJSON(r.Body); err != nil {
+		http.Error(rw, "invalid cart payload", http.StatusBadRequest)
+		return
+	}
+	cart.Date = time.Now()
+
+	// add cart to data store
+	data.AddCart(cart)
+
+	// try to return created cart
+	if err := cart.ToJSON(rw); err != nil {
+		http.Error(rw,
+			fmt.Sprintf("user created with ID: '%d', but failed to retrieve it",
+				cart.ID),
+			http.StatusInternalServerError)
+	}
+}
+
+// get all carts, single cart or carts in a date range
 func (h *Cart) get(rw http.ResponseWriter, r *http.Request) {
 	h.logger.Println("received a GET request")
 
@@ -175,57 +203,9 @@ func (h *Cart) get(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Cart) create(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("received a PUT request")
-
-	// parse cart from request object
-	cart := &data.Cart{}
-	if err := cart.FromJSON(r.Body); err != nil {
-		http.Error(rw, "invalid cart payload", http.StatusBadRequest)
-		return
-	}
-	cart.Date = time.Now()
-
-	// add cart to data store
-	data.AddCart(cart)
-
-	// try to return created cart
-	if err := cart.ToJSON(rw); err != nil {
-		http.Error(rw,
-			fmt.Sprintf("user created with ID: '%d', but failed to retrieve it",
-				cart.ID),
-			http.StatusInternalServerError)
-	}
-}
-
-func (h *Cart) delete(rw http.ResponseWriter, r *http.Request) {
-	h.logger.Println("received a DELETE cart request")
-
-	deleteCartRe := regexp.MustCompile(`^/carts/(\d+)$`)
-
-	// get cart id
-	cartID, err := getItemID(deleteCartRe, r.URL.Path)
-	if err != nil {
-		http.Error(rw, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	// delete cart from datastore
-	cart, err := data.RemoveCart(cartID)
-	if err != nil {
-		http.Error(rw, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	// return deleted cart to client
-	if err := cart.ToJSON(rw); err != nil {
-		http.Error(rw,
-			fmt.Sprintf("cart with ID: '%d' was deleted, but failed to retrieve it",
-				cart.ID),
-			http.StatusInternalServerError)
-	}
-}
-
+// update handle PUT requests (when the whole cart attributes
+// need to be updated), it handle PATCH requests when specific
+// attributes of a cart need to be updated.
 func (h *Cart) update(rw http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPut {
 		h.logger.Println("received a PUT cart request")
@@ -261,6 +241,35 @@ func (h *Cart) update(rw http.ResponseWriter, r *http.Request) {
 	if err := cart.ToJSON(rw); err != nil {
 		http.Error(rw,
 			fmt.Sprintf("cart with ID: '%d' was updated sucessfully, but failed to retrieve it",
+				cart.ID),
+			http.StatusInternalServerError)
+	}
+}
+
+// delete removes a single cart from data store.
+func (h *Cart) delete(rw http.ResponseWriter, r *http.Request) {
+	h.logger.Println("received a DELETE cart request")
+
+	deleteCartRe := regexp.MustCompile(`^/carts/(\d+)$`)
+
+	// get cart id
+	cartID, err := getItemID(deleteCartRe, r.URL.Path)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// delete cart from datastore
+	cart, err := data.RemoveCart(cartID)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// return deleted cart to client
+	if err := cart.ToJSON(rw); err != nil {
+		http.Error(rw,
+			fmt.Sprintf("cart with ID: '%d' was deleted, but failed to retrieve it",
 				cart.ID),
 			http.StatusInternalServerError)
 	}
